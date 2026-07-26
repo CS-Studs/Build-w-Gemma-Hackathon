@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useWindowDrag } from "../hooks/useWindowDrag";
 import { useSpeechCycle } from "../hooks/useSpeechCycle";
 import { enterWorkspace } from "../windows";
@@ -23,15 +22,6 @@ export function Widget() {
 
   return (
     <div className="widget">
-      <button
-        className="widget__quit"
-        title="Close StudyDuck"
-        aria-label="Close StudyDuck"
-        onClick={() => void getCurrentWindow().close()}
-      >
-        ×
-      </button>
-
       <div className={held ? "widget__float is-held" : "widget__float"}>
         <SpeechBubble text={speech.text} visible={speech.visible} />
         <div

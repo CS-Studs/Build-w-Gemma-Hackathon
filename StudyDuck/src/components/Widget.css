@@ -67,36 +67,6 @@
   filter: drop-shadow(0 16px 14px rgba(0, 0, 0, 0.32));
 }
 
-.widget__quit {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  /* Stays clickable if a long line of speech reaches this corner. */
-  z-index: 2;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  font-size: 15px;
-  line-height: 1;
-  color: #fff;
-  background: rgba(24, 24, 27, 0.72);
-  border: none;
-  border-radius: 50%;
-  opacity: 0;
-  cursor: pointer;
-  transition: opacity 160ms ease-out;
-}
-
-.widget:hover .widget__quit {
-  opacity: 1;
-}
-
-.widget__quit:hover {
-  background: rgba(220, 38, 38, 0.92);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .widget__float {
     animation: none;

@@ -11,6 +11,8 @@
     "core:window:allow-outer-position",
     "core:window:allow-set-position",
     "core:window:allow-close",
+    "core:window:allow-hide",
+    "core:window:allow-show",
     "opener:default",
     "http:default",
     "fs:default"

@@ -1,11 +1,14 @@
 .speech-bubble {
   position: absolute;
   bottom: 100%;
-  left: 50%;
-  margin-bottom: 12px;
+  /* Offset to the right of the duck, which its containing block is exactly as
+     wide as (150px). max-width keeps a long line inside the 240px widget
+     window set in src-tauri/src/windows.rs. */
+  left: 62px;
+  max-width: 125px;
   width: max-content;
-  max-width: 200px;
-  padding: 8px 14px;
+  margin-bottom: 6px;
+  padding: 8px 12px;
   border-radius: 14px;
   /* Light regardless of theme: this floats over the desktop, not over the app. */
   background: #ffffff;
@@ -16,9 +19,10 @@
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
   /* Never swallow a press meant for the duck underneath. */
   pointer-events: none;
-  transform-origin: bottom center;
+  /* Grows out of its own tail. */
+  transform-origin: bottom left;
   opacity: 0;
-  transform: translate(-50%, 10px) scale(0.9);
+  transform: translateY(10px) scale(0.9);
   transition:
     opacity 200ms ease-out,
     transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -26,18 +30,17 @@
 
 .speech-bubble.is-visible {
   opacity: 1;
-  transform: translate(-50%, 0) scale(1);
+  transform: translateY(0) scale(1);
 }
 
-/* Tail, pointing down at the duck. */
+/* Tail on the left, pointing back down at the duck. */
 .speech-bubble::after {
   content: "";
   position: absolute;
   bottom: -4px;
-  left: 50%;
+  left: 16px;
   width: 12px;
   height: 12px;
-  margin-left: -6px;
   border-radius: 0 0 3px 0;
   background: inherit;
   transform: rotate(45deg);
