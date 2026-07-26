@@ -66,8 +66,8 @@ fn exclude_from_capture(_window: &WebviewWindow) {}
 pub fn build_workspace(app: &AppHandle) -> Result<WebviewWindow> {
     WebviewWindowBuilder::new(app, WORKSPACE_LABEL, WebviewUrl::App("index.html".into()))
         .title("StudyDuck")
-        .inner_size(900.0, 640.0)
-        .min_inner_size(480.0, 360.0)
+        .inner_size(1200.0, 800.0)
+        .min_inner_size(1100.0, 700.0)
         .center()
         .build()
 }

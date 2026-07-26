@@ -6,6 +6,7 @@ import { ToDoList } from './ToDoList';
 import { UserSection } from './UserSection';
 import { Mindmap } from './Mindmap';
 import { Flashcard } from './Flashcard';
+import { Notes } from './Notes';
 
 import './Workspace.css';
 
@@ -26,7 +27,7 @@ export function Workspace() {
         <div className="workspace__column-panes">
           <Mindmap />
           <Flashcard />
-          <div className="workspace__pane" />
+          <Notes />
           <div className="workspace__pane workspace__pane--duck">
             <DuckButton />
           </div>
