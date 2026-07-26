@@ -42,7 +42,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_workspace,
             open_widget,
-            capture::capture_screen
+            capture::capture_screen,
+            capture::save_analysis
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

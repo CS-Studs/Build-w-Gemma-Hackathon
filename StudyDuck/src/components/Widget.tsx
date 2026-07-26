@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useWindowDrag } from "../hooks/useWindowDrag";
 import { useSpeechCycle } from "../hooks/useSpeechCycle";
-import { useScreenshotLoop } from "../hooks/useScreenshotLoop";
+import { useDesktopAnalysis } from "../hooks/useDesktopAnalysis";
 import { enterWorkspace } from "../windows";
 import { IDLE_LINES } from "../speech";
 import { Duck } from "./Duck";
@@ -15,8 +15,8 @@ import {
 } from "./studySessionStore";
 import "./Widget.css";
 
-/** How often the duck grabs the desktop while it is floating. */
-const SCREENSHOT_INTERVAL_MS = 15_000;
+/** How often the duck looks at the desktop while it is floating. */
+const ANALYSIS_INTERVAL_MS = 15_000;
 
 function WidgetStudyTimer() {
   const [active, setActive] = useState<ActiveStudySession | null>(
@@ -67,7 +67,7 @@ export function Widget() {
   });
   const speech = useSpeechCycle(IDLE_LINES);
 
-  useScreenshotLoop(SCREENSHOT_INTERVAL_MS);
+  useDesktopAnalysis(ANALYSIS_INTERVAL_MS);
 
   useEffect(() => {
     const blockMenu = (event: MouseEvent) => event.preventDefault();

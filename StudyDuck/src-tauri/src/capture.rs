@@ -1,20 +1,29 @@
 use std::{
     fs,
+    io::Cursor,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use tauri::{AppHandle, Manager};
-use xcap::Monitor;
+use xcap::{
+    Monitor,
+    image::{DynamicImage, ImageFormat, RgbaImage, imageops::FilterType},
+};
 
-const PREFIX: &str = "screen-";
+const ANALYSIS_PREFIX: &str = "analysis-";
 
-/// How many captures to keep. A full-screen PNG every 15 seconds is on the
-/// order of a gigabyte an hour, and this directory is scratch space, so the
-/// oldest frames are dropped once the count goes past this.
-const MAX_CAPTURES: usize = 40;
+/// How many analyses to keep. This directory is scratch space, so older notes
+/// are dropped once the count goes past this.
+const MAX_ANALYSES: usize = 60;
 
-/// Where captures land.
+/// Screenshots are shrunk to this width before being sent off. A classifier
+/// only needs to see roughly what is on screen, and a full-resolution frame is
+/// both a slow upload and a lot of image tokens.
+const MAX_WIDTH: u32 = 1280;
+
+/// Where captures and analyses land.
 ///
 /// In development that is the source tree, so they are easy to find. A packaged
 /// build has no source tree to write into, so it falls back to the per-user app
@@ -47,54 +56,84 @@ fn primary_monitor() -> Result<Monitor, String> {
     fallback.ok_or_else(|| "no monitor available to capture".to_string())
 }
 
-/// Deletes the oldest captures beyond MAX_CAPTURES.
+/// Shrinks the frame and encodes it as JPEG, which has no alpha channel and so
+/// needs the captured RGBA dropped to RGB first.
+fn encode_jpeg(frame: RgbaImage) -> Result<Vec<u8>, String> {
+    let mut image = DynamicImage::ImageRgba8(frame);
+
+    if image.width() > MAX_WIDTH {
+        let height = (image.height() * MAX_WIDTH) / image.width();
+        image = image.resize(MAX_WIDTH, height, FilterType::Triangle);
+    }
+
+    let mut buffer = Vec::new();
+    DynamicImage::ImageRgb8(image.to_rgb8())
+        .write_to(&mut Cursor::new(&mut buffer), ImageFormat::Jpeg)
+        .map_err(|e| e.to_string())?;
+
+    Ok(buffer)
+}
+
+/// Deletes the oldest files beyond `keep`.
 ///
-/// Only touches files this module wrote: the prefix and extension are both
+/// Only touches files this module wrote: both the prefix and the extension are
 /// checked, so nothing else dropped in the folder is at risk.
-fn prune(dir: &Path) -> std::io::Result<()> {
-    let mut captures: Vec<PathBuf> = fs::read_dir(dir)?
+fn prune(dir: &Path, prefix: &str, extension: &str, keep: usize) -> std::io::Result<()> {
+    let mut existing: Vec<PathBuf> = fs::read_dir(dir)?
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.path())
         .filter(|path| {
             path.file_name()
                 .and_then(|name| name.to_str())
-                .is_some_and(|name| name.starts_with(PREFIX) && name.ends_with(".png"))
+                .is_some_and(|name| name.starts_with(prefix) && name.ends_with(extension))
         })
         .collect();
 
-    if captures.len() <= MAX_CAPTURES {
+    if existing.len() <= keep {
         return Ok(());
     }
 
     // Names embed a fixed-width millisecond timestamp, so sorting by name sorts
     // by age.
-    captures.sort();
-    for stale in &captures[..captures.len() - MAX_CAPTURES] {
+    existing.sort();
+    for stale in &existing[..existing.len() - keep] {
         let _ = fs::remove_file(stale);
     }
 
     Ok(())
 }
 
-/// Writes a PNG of the primary monitor and returns where it landed.
-#[tauri::command]
-pub async fn capture_screen(app: AppHandle) -> Result<String, String> {
-    let dir = capture_dir(&app)?;
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+fn timestamp() -> Result<u128, String> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|since| since.as_millis())
+        .map_err(|e| e.to_string())
+}
 
-    let image = primary_monitor()?
+/// Grabs the primary monitor and hands it back as a base64 JPEG.
+///
+/// Nothing is written to disk: the frame exists only long enough to be sent to
+/// Gemma, and only the verdict is worth keeping.
+#[tauri::command]
+pub async fn capture_screen() -> Result<String, String> {
+    let frame = primary_monitor()?
         .capture_image()
         .map_err(|e| e.to_string())?;
 
-    let stamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| e.to_string())?
-        .as_millis();
+    Ok(BASE64.encode(encode_jpeg(frame)?))
+}
 
-    let path = dir.join(format!("{PREFIX}{stamp}.png"));
-    image.save(&path).map_err(|e| e.to_string())?;
+/// Writes one analysis into the capture directory and returns where it landed.
+#[tauri::command]
+pub async fn save_analysis(app: AppHandle, text: String) -> Result<String, String> {
+    let dir = capture_dir(&app)?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
 
-    let _ = prune(&dir);
+    let stamp = timestamp()?;
+    let path = dir.join(format!("{ANALYSIS_PREFIX}{stamp}.txt"));
+
+    fs::write(&path, text).map_err(|e| e.to_string())?;
+    let _ = prune(&dir, ANALYSIS_PREFIX, ".txt", MAX_ANALYSES);
 
     Ok(path.to_string_lossy().into_owned())
 }
