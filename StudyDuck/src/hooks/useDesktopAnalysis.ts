@@ -2,14 +2,17 @@ import { useEffect } from "react";
 import { analyseDesktop, recordAnalysisFailure } from "../screenAnalysis";
 
 /**
- * Captures and classifies the desktop on a fixed interval while mounted.
+ * Captures and classifies the desktop on a fixed interval while `enabled`.
  *
- * Mounting is the whole scoping mechanism: only the widget window renders the
- * component that calls this, so the loop starts when the duck appears and dies
- * with the window when it swaps to the workspace.
+ * Scoping is two layered gates. Only the widget window renders the component
+ * that calls this, so the loop cannot outlive the duck; `enabled` then narrows
+ * that to the stretches where the study timer is actually counting, so an idle
+ * duck neither photographs the screen nor spends quota.
  */
-export function useDesktopAnalysis(intervalMs: number) {
+export function useDesktopAnalysis(intervalMs: number, enabled: boolean) {
   useEffect(() => {
+    if (!enabled) return;
+
     // A round trip to Gemma can outlast the interval on a slow connection, so
     // ticks are skipped rather than allowed to pile up.
     let inFlight = false;
@@ -29,8 +32,8 @@ export function useDesktopAnalysis(intervalMs: number) {
       }
     };
 
-    // Look at the desktop as soon as the duck appears rather than leaving the
-    // first interval to expire, so a fresh run produces a note immediately.
+    // Look at the desktop the moment the timer starts rather than leaving the
+    // first interval to expire, so a session produces a note immediately.
     void tick();
     const timer = window.setInterval(() => void tick(), intervalMs);
 
@@ -38,5 +41,5 @@ export function useDesktopAnalysis(intervalMs: number) {
       stopped = true;
       window.clearInterval(timer);
     };
-  }, [intervalMs]);
+  }, [intervalMs, enabled]);
 }
