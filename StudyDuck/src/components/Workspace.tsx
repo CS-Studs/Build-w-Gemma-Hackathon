@@ -24,9 +24,9 @@ export function Workspace() {
       <section className="workspace__column workspace__column--rows">
         <StatsSection />
         <div className="workspace__column-panes">
-          <div className="workspace__pane" />
           <Mindmap />
           <Flashcard />
+          <div className="workspace__pane" />
           <div className="workspace__pane workspace__pane--duck">
             <DuckButton />
           </div>
