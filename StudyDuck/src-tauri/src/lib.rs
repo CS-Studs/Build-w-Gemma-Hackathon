@@ -1,3 +1,4 @@
+mod capture;
 mod windows;
 
 use tauri::{AppHandle, Manager};
@@ -38,7 +39,11 @@ pub fn run() {
             windows::build_widget(app.handle())?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![open_workspace, open_widget])
+        .invoke_handler(tauri::generate_handler![
+            open_workspace,
+            open_widget,
+            capture::capture_screen
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
