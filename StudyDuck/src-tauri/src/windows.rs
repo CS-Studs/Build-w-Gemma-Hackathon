@@ -11,7 +11,9 @@ pub const WORKSPACE_LABEL: &str = "workspace";
 pub fn build_widget(app: &AppHandle) -> Result<WebviewWindow> {
     WebviewWindowBuilder::new(app, WIDGET_LABEL, WebviewUrl::App("index.html".into()))
         .title("StudyDuck")
-        .inner_size(210.0, 240.0)
+        // Taller than the duck needs: the extra headroom is where the speech
+        // bubble appears.
+        .inner_size(240.0, 280.0)
         .resizable(false)
         .decorations(false)
         .transparent(true)
