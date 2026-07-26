@@ -37,37 +37,69 @@ export function DuckChat() {
   // References
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatRef = useRef<any>(null);
-  const loadingRef = useRef(false);
-  const pendingProfileRef = useRef<UserProfile | null>(null);
 
-  const replaceChatProfile = (profile: UserProfile) => {
-    const history = chatRef.current?.getHistory(true) ?? [];
-    chatRef.current = ai.chats.create({
-      model: 'gemma-4-31b-it',
-      config: { systemInstruction: buildDuckChatSystemInstruction(profile) },
-      history,
-    });
-  };
+  // Safety check so React Strict Mode doesn't send two greetings
+  const hasInitialized = useRef(false);
 
-  // Initialize Gemma and apply saved profile changes without losing history.
+  // Initialize the Gemma chat session on component mount
   useEffect(() => {
-    replaceChatProfile(loadUserProfile());
-    const applyProfile = (profile: UserProfile) => {
-      if (loadingRef.current) pendingProfileRef.current = profile;
-      else replaceChatProfile(profile);
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const startChat = async () => {
+      // 1. Create the chat session
+      chatRef.current = ai.chats.create({
+        model: 'gemma-4-31b-it',
+        config: {
+          temperature: 0.5,
+          systemInstruction: `You are an adaptive, psychologically-aware anti-procrastination tutor. Your core directive is to build, utilize, and continuously update a 'Psychological Profile' of the user to tailor their learning experience.
+
+          ### THE LIVING PROFILE (Continuous Monitoring)
+          You must actively listen to both the user's explicit statements and implicit cues (frustration, sudden task-switching, negative self-talk, tone). Use these to constantly refine your internal profile of their psychology (e.g., ADHD, perfectionism, executive dysfunction, burnout). If they show signs of frustration or distraction, immediately adapt your strategy.
+
+          ### PHASE 1: INTAKE & PROFILING
+          When the conversation starts, your goal is to understand both the *what* and the *why*.
+          1. Identify the specific task they are avoiding.
+          2. Gently probe the psychological or neurological root of their procrastination. (e.g., "Are you feeling overwhelmed by the size of it, is your ADHD making it hard to start, or are you worried it won't be perfect?")
+          *Rule: Do not start tutoring until you have a baseline psychological profile.*
+
+          ### PHASE 2: TAILORED TUTORING
+          Directly apply psychological frameworks to your teaching based on the user's profile:
+          - ADHD / EXECUTIVE DYSFUNCTION: Provide high-dopamine, gamified interactions. Use extreme structure, issue only one micro-step at a time, and give frequent positive reinforcement.
+          - PERFECTIONISM / ANXIETY: Focus on "drafting" rather than "finishing." Validate their feelings, lower the stakes, and celebrate messy, imperfect progress.
+          - BURNOUT / OVERWHELM: Use ridiculously small micro-steps. Offer extreme empathy and require minimal cognitive load per interaction.
+
+          ### ONGOING RULES
+          - Never give the direct answer. Break problems down and use guiding questions so they find the solution themselves.
+          - Keep responses concise and highly conversational.
+          - If your current strategy isn't working, acknowledge it, update your profile, and pivot your approach.`,
+        },
+      });
+
+      // 2. Secretly ask the AI to start the conversation
+      setIsLoading(true);
+      try {
+        const response = await chatRef.current.sendMessage({
+          message:
+            'SYSTEM PROMPT: The user just opened the app. Introduce yourself warmly in one brief sentence, and ask your first profiling question to find out what they are avoiding today.',
+        });
+
+        // 3. Put the AI's greeting on the screen
+        setMessages([
+          {
+            id: Date.now(),
+            text: response.text,
+            sender: 'bot',
+          },
+        ]);
+      } catch (error) {
+        console.error('Error starting chat:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
-    const handleProfileChange = (event: Event) => {
-      applyProfile((event as CustomEvent<UserProfile>).detail);
-    };
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === USER_PROFILE_STORAGE_KEY) applyProfile(loadUserProfile());
-    };
-    window.addEventListener(USER_PROFILE_CHANGED_EVENT, handleProfileChange);
-    window.addEventListener('storage', handleStorage);
-    return () => {
-      window.removeEventListener(USER_PROFILE_CHANGED_EVENT, handleProfileChange);
-      window.removeEventListener('storage', handleStorage);
-    };
+
+    startChat();
   }, []);
 
   // Handle attaching an image

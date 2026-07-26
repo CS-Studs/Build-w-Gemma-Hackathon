@@ -1,3 +1,10 @@
+/* Hugs the artwork so the hearts can be positioned against the duck itself
+   rather than against whatever happens to wrap it. */
+.duck-figure {
+  position: relative;
+  line-height: 0;
+}
+
 .duck {
   display: block;
   width: 150px;
@@ -6,4 +13,67 @@
   /* Presses land on whatever wraps the duck -- the widget's drag surface or the
      workspace button -- and the native image drag never starts. */
   pointer-events: none;
+}
+
+.duck__heart {
+  position: absolute;
+  width: 38px;
+  height: auto;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  /* Runs once and holds the final frame: the element is unmounted a second in,
+     and the fade means it leaves rather than blinking out. */
+  animation: duck-heart-pop 1000ms ease-out forwards;
+}
+
+.duck__heart--upper-right {
+  top: 4%;
+  right: -2%;
+}
+
+.duck__heart--middle-left {
+  top: 40%;
+  left: -4%;
+  /* Slightly out of step with the other one so the pair reads as two hearts
+     rather than one mirrored decoration. */
+  animation-delay: 90ms;
+}
+
+@keyframes duck-heart-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) translateY(8px);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.12) translateY(0);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1) translateY(-2px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.96) translateY(-14px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .duck__heart {
+    animation: duck-heart-fade 1000ms ease-out forwards;
+  }
+
+  .duck__heart--middle-left {
+    animation-delay: 0ms;
+  }
+
+  @keyframes duck-heart-fade {
+    0%,
+    70% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
 }
