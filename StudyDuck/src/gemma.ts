@@ -13,4 +13,4 @@ export const VISION_MODEL = "gemma-4-31b-it";
  * image attached, and it has to land while the mood it belongs to is still on
  * screen. Accuracy matters far less here than answering quickly.
  */
-export const SPEECH_MODEL = "gemma-4-26b-a4b-it";
+export const SPEECH_MODEL = "gemma-4-31b-it";

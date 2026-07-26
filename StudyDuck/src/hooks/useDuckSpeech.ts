@@ -17,8 +17,17 @@ const NUDGE_EVERY_MS = 60_000;
 /** How often the duck considers whether it has anything to say. */
 const TICK_MS = 1_000;
 
-/** How soon an attempt that produced no line may be repeated. */
+/**
+ * How soon an attempt that produced no line may be repeated, doubling with each
+ * further failure up to the ceiling.
+ *
+ * A flat retry is the wrong shape here. The usual reason a line does not come
+ * back is that the key is already saturated by the screenshots, and retrying
+ * every five seconds adds to exactly the load that caused it. Backing off lets
+ * the queue drain instead of feeding it.
+ */
 const RETRY_AFTER_MS = 5_000;
+const RETRY_CEILING_MS = 60_000;
 
 /**
  * The duck's speech bubble, written by Gemma from what the screen has shown.
@@ -64,6 +73,7 @@ export function useDuckSpeech(
   const speaking = useRef(false);
   const lastAttempt = useRef(0);
   const lastSpoke = useRef(0);
+  const failures = useRef(0);
 
   /**
    * Asks for a line and shows it, reporting whether one reached the bubble.
@@ -83,7 +93,7 @@ export function useDuckSpeech(
       const asked = Date.now();
 
       try {
-        const text = await composeRemark({
+        const { text, why } = await composeRemark({
           category,
           previous,
           note: latest.current.note,
@@ -95,10 +105,11 @@ export function useDuckSpeech(
         const current =
           latest.current.enabled && latest.current.activity.since === since;
         if (!text || !current) {
+          failures.current += 1;
           // A dropped line used to leave no trace at all, which made a duck
           // that stayed quiet indistinguishable from one that was never asked.
           await logNote(
-            `SAID NOTHING: ${current ? "the model replied with nothing" : "the run had already moved on"}`,
+            `SAID NOTHING: ${current ? why : "the run had already moved on"}`,
           ).catch(() => {});
           return false;
         }
@@ -108,6 +119,7 @@ export function useDuckSpeech(
           text,
         }));
         lastSpoke.current = Date.now();
+        failures.current = 0;
         // Filed alongside the readings that prompted it, so the log reads back
         // as what the duck saw and what it said about it, in order. The round
         // trip is worth recording next to it: how late a line is says which of
@@ -116,6 +128,7 @@ export function useDuckSpeech(
         await logNote(`SAID (${took}s): ${text}`).catch(() => {});
         return true;
       } catch (error) {
+        failures.current += 1;
         const detail = error instanceof Error ? error.message : String(error);
         // Same reasoning as the classifier: the widget's devtools are out of
         // reach, so the log on disk is the only place a failure is visible.
@@ -139,12 +152,18 @@ export function useDuckSpeech(
         previousCategory.current = runCategory.current;
         runCategory.current = category;
         // A switch is the one moment worth interrupting for, so it is not held
-        // up by the pause that paces retries after a failure.
+        // up by the pause that paces retries after a failure. Switches are
+        // minutes apart, so this cannot become a way round the backoff.
         lastAttempt.current = 0;
+        failures.current = 0;
       }
 
       const now = Date.now();
-      if (now - lastAttempt.current < RETRY_AFTER_MS) return;
+      const wait = Math.min(
+        RETRY_AFTER_MS * 2 ** failures.current,
+        RETRY_CEILING_MS,
+      );
+      if (now - lastAttempt.current < wait) return;
 
       // The reaction to the switch comes first, and keeps being retried until
       // something reaches the bubble: a run that changed the duck's face

@@ -79,30 +79,67 @@ function tidy(reply: string): string {
  */
 const SPEECH_TIMEOUT_MS = 25_000;
 
+export type Remarked = {
+  /** The line to show, or empty when nothing usable came back. */
+  text: string;
+  /**
+   * Why it is empty, for the log.
+   *
+   * "The model replied with nothing" covers several quite different failures --
+   * a truncated answer, a refusal, an empty candidate -- and telling them apart
+   * from the outside is guesswork, so the reason travels with the result.
+   */
+  why: string;
+};
+
 /**
  * Asks Gemma for one line of duck.
  *
  * Stateless, like the screen classifier: every remark carries its own situation,
  * so there is no history to keep and nothing to go stale between sessions.
  */
-export async function composeRemark(remark: Remark): Promise<string> {
+export async function composeRemark(remark: Remark): Promise<Remarked> {
   const abort = new AbortController();
-  const deadline = window.setTimeout(
-    () => abort.abort(new Error(`no reply within ${SPEECH_TIMEOUT_MS}ms`)),
-    SPEECH_TIMEOUT_MS,
-  );
+  const deadline = window.setTimeout(() => abort.abort(), SPEECH_TIMEOUT_MS);
 
   try {
     const response = await ai.models.generateContent({
       model: SPEECH_MODEL,
       config: {
         systemInstruction: SPEECH_SYSTEM_PROMPT,
+        // No maxOutputTokens, deliberately.
+        //
+        // The model thinks before it answers, thoughts are spent from the
+        // output budget, and the SDK discards them when reading the reply. Any
+        // cap is therefore a cap on the thinking, and the model runs out mid
+        // thought and returns finish=MAX_TOKENS with nothing in it -- observed
+        // at both 64 and 256. Turning the thinking off instead is refused:
+        // "Thinking budget is not supported for this model". The prompt asks
+        // for twelve words and that is the only limit that works.
         abortSignal: abort.signal,
       },
       contents: [{ role: "user", parts: [{ text: buildPrompt(remark) }] }],
     });
 
-    return tidy(response.text ?? "");
+    const raw = response.text ?? "";
+    const text = tidy(raw);
+    if (text) return { text, why: "" };
+
+    const finish = response.candidates?.[0]?.finishReason ?? "none";
+    return {
+      text: "",
+      why: `finish=${finish} reply=${JSON.stringify(raw.slice(0, 120))}`,
+    };
+  } catch (error) {
+    // The SDK does not hand our signal to fetch. It listens on ours and aborts
+    // one of its own with no reason attached, so a request that ran out of time
+    // surfaces as the browser's generic "signal is aborted without reason" and
+    // reads like a bug in the client. Ours is the only deadline in play, so the
+    // signal itself is enough to say what happened.
+    if (abort.signal.aborted) {
+      throw new Error(`no reply within ${SPEECH_TIMEOUT_MS / 1000}s`);
+    }
+    throw error;
   } finally {
     window.clearTimeout(deadline);
   }

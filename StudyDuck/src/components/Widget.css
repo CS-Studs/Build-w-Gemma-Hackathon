@@ -16,14 +16,20 @@
 /* Pinned to the top rather than centred, which keeps the duck itself still:
    the speech bubble rises into the padding above it, and the study timer grows
    downwards into empty space instead of shoving the duck when a session
-   starts or stops. */
+   starts or stops.
+
+   The padding is therefore the bubble's ceiling, and the window clips anything
+   past it. 104px less the bubble's own 6px margin leaves 98, which at 13px on
+   1.35 line-height plus 16px of vertical padding is four lines. Below the duck
+   sit its 150px of artwork and a 33px timer, so the window needs 104 + 183 =
+   287px of the 320 it is given in src-tauri/src/windows.rs. */
 .widget {
   position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   height: 100%;
-  padding-top: 64px;
+  padding-top: 104px;
 }
 
 /* Idle float. Kept on its own element so it does not fight the scale
