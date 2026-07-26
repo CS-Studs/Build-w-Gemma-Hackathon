@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
+import ReactMarkdown from 'react-markdown';
 import './DuckChat.css';
 
 // Initialize the SDK using the Vite environment variable
@@ -128,7 +129,11 @@ export function DuckChat() {
                   className="message-image"
                 />
               )}
-              {msg.text && <p>{msg.text}</p>}
+              {msg.text && (
+                <div className="markdown-body">
+                  <ReactMarkdown>{msg.text}</ReactMarkdown>{' '}
+                </div>
+              )}
             </div>
           ))
         )}

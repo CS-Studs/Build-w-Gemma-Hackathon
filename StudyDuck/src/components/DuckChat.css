@@ -264,3 +264,54 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* --- Markdown Styles --- */
+.markdown-body {
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+/* Remove default margins so bubbles don't get massive */
+.markdown-body p:first-child {
+  margin-top: 0;
+}
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* Make lists look clean */
+.markdown-body ul,
+.markdown-body ol {
+  margin-top: 4px;
+  margin-bottom: 4px;
+  padding-left: 20px;
+}
+
+/* Style inline code snippets */
+.markdown-body code {
+  background: rgba(120, 120, 130, 0.15);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.8em;
+}
+
+/* Style larger code blocks */
+.markdown-body pre {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 8px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre {
+    background: rgba(0, 0, 0, 0.2);
+  }
+}
