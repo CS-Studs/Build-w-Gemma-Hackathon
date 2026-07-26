@@ -1,10 +1,13 @@
-import { DuckButton } from "./DuckButton";
-import { DuckChat } from "./DuckChat";
-import { StudySession } from "./studysession";
-import { StatsSection } from "./StatsSection";
-import { ToDoList } from "./ToDoList";
-import { UserSection } from "./UserSection";
-import "./Workspace.css";
+import { DuckButton } from './DuckButton';
+import { DuckChat } from './DuckChat';
+import { StudySession } from './studysession';
+import { StatsSection } from './StatsSection';
+import { ToDoList } from './ToDoList';
+import { UserSection } from './UserSection';
+import { Mindmap } from './Mindmap';
+import { Flashcard } from './Flashcard';
+
+import './Workspace.css';
 
 /** The normal app window: three feature columns, with the duck in the last. */
 export function Workspace() {
@@ -22,6 +25,8 @@ export function Workspace() {
         <StatsSection />
         <div className="workspace__column-panes">
           <div className="workspace__pane" />
+          <Mindmap />
+          <Flashcard />
           <div className="workspace__pane workspace__pane--duck">
             <DuckButton />
           </div>

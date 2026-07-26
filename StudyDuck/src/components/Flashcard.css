@@ -1,0 +1,241 @@
+/* --- Tool Trigger Pane (Matches dark mode palette) --- */
+.tool-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  background: #242429;
+  border: 1px solid #34343a !important; /* Overrides the dashed placeholder border */
+  border-radius: 10px;
+  transition: all 150ms ease;
+}
+
+.tool-trigger:hover {
+  background: #2a2a31;
+  border-color: #5b67d6 !important;
+  transform: translateY(-2px);
+}
+
+.tool-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.tool-trigger h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #eeeef0;
+}
+
+.tool-trigger p {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: #8b9099;
+}
+
+/* --- Shared Modal Framework --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(18, 18, 20, 0.75);
+  backdrop-filter: blur(5px);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  background: #242429;
+  border: 1px solid #34343a;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  color: #eeeef0;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: #8b9099;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 4px;
+  transition: color 150ms;
+}
+
+.close-btn:hover {
+  color: #c64d5c;
+}
+
+/* --- Modal Button Controls --- */
+.modal-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.action-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 150ms ease;
+}
+
+.action-btn.primary {
+  flex: 1;
+  background: #5b67d6;
+  color: white;
+}
+
+.action-btn.primary:hover {
+  background: #4d59c5;
+}
+
+.action-btn.secondary {
+  background: #303037;
+  color: #eeeef0;
+}
+
+.action-btn.secondary:hover {
+  background: #3a3a42;
+}
+
+/* --- 3D Flashcard Flipping Physics --- */
+.flashcard-container {
+  background-color: transparent;
+  width: 100%;
+  height: 250px;
+  perspective: 1000px;
+  cursor: pointer;
+}
+
+.flashcard-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.flashcard-container.flipped .flashcard-inner {
+  transform: rotateY(180deg);
+}
+
+.flashcard-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background: #303037;
+  border: 1px solid #45454e;
+  border-radius: 12px;
+}
+
+.flashcard-back {
+  background: #363640;
+  border-color: #5b67d6;
+  transform: rotateY(180deg);
+}
+
+.card-label {
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #8b9099;
+  letter-spacing: 0.05em;
+  font-weight: bold;
+}
+
+.card-text {
+  font-size: 1.1rem;
+  line-height: 1.5;
+  margin: 0;
+  color: #fff;
+}
+
+/* --- Input Section --- */
+.flashcard-input-section {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.flashcard-input-section .text-input {
+  flex: 1;
+  padding: 10px 14px;
+  background-color: #303037;
+  color: #eeeef0;
+  border: 1px solid #45454e;
+  border-radius: 8px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+}
+
+.flashcard-input-section .text-input:focus {
+  border-color: #5b67d6;
+}
+
+/* --- Placeholder / Empty States --- */
+.flashcard-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 250px;
+  color: #7f848d;
+  text-align: center;
+  background: #2a2a31;
+  border-radius: 12px;
+  border: 1px dashed #45454e;
+}
+
+.flashcard-placeholder .placeholder-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+/* --- Deck Counter --- */
+.deck-counter {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #8b9099;
+  margin-bottom: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
