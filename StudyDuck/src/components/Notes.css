@@ -1,6 +1,3 @@
-/* Note: Relies on the shared .modal-overlay, .modal-content, and .action-btn 
-   styles you already have in Flashcard.css */
-
 /* --- Tool Trigger Pane --- */
 .notes-trigger {
   display: flex;
@@ -25,16 +22,120 @@
 .modal-content.notes-modal {
   display: flex;
   flex-direction: column;
-  height: 70vh;
-  max-width: 600px;
+  height: 80vh;
+  max-width: 800px; /* Widened to fit the sidebar comfortably */
 }
 
-/* --- Textarea Container --- */
-.notes-container {
+/* --- Two-Column Layout --- */
+.notes-layout {
+  display: flex;
+  flex: 1;
+  gap: 20px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+/* --- Sidebar --- */
+.notes-sidebar {
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-right: 1px solid #34343a;
+  padding-right: 20px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.empty-notes-hint {
+  color: #7f848d;
+  font-size: 0.85rem;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.note-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #303037;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.note-list-item:hover {
+  background: #3a3a42;
+}
+
+.note-list-item.active {
+  background: #5b67d6;
+  color: white;
+}
+
+.note-title-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.85rem;
+  font-weight: 500;
+  flex: 1;
+  margin-right: 8px;
+}
+
+.delete-note-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.5;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+}
+
+.delete-note-btn:hover {
+  opacity: 1;
+  color: #ff6b6b;
+}
+
+.note-list-item.active .delete-note-btn:hover {
+  color: #ffb3b3;
+}
+
+/* --- Editor Area --- */
+.notes-editor-area {
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-bottom: 20px;
+  gap: 16px;
+}
+
+.note-title-input {
+  background: transparent;
+  color: #eeeef0;
+  border: none;
+  border-bottom: 1px solid #34343a;
+  font-size: 1.4rem;
+  font-weight: bold;
+  padding: 8px 0;
+  outline: none;
+  transition: border-color 150ms ease;
+  font-family: inherit;
+}
+
+.note-title-input:focus {
+  border-bottom-color: #5b67d6;
 }
 
 .notes-textarea {
@@ -48,7 +149,7 @@
   font-family: inherit;
   font-size: 0.95rem;
   line-height: 1.5;
-  resize: none; /* Prevents manual resizing breaking the modal */
+  resize: none;
   outline: none;
   box-sizing: border-box;
   transition: border-color 0.2s ease;
@@ -63,7 +164,26 @@
   opacity: 0.7;
 }
 
-/* --- Save Indicator --- */
+/* --- Empty Editor State --- */
+.empty-editor-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #7f848d;
+  background: #2a2a31;
+  border-radius: 12px;
+  border: 1px dashed #45454e;
+}
+
+.empty-editor-state .placeholder-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+/* --- Controls --- */
 .save-indicator {
   display: flex;
   align-items: center;
