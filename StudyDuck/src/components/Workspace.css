@@ -28,6 +28,19 @@
   gap: 16px;
 }
 
+.workspace__column--middle {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.workspace__column--middle .duckchat-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+
 .workspace__column:not(.workspace__column--rows),
 .workspace__pane {
   border: 1px dashed rgba(120, 120, 130, 0.3);

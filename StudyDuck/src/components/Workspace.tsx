@@ -1,5 +1,6 @@
 import { DuckButton } from "./DuckButton";
 import { DuckChat } from "./DuckChat";
+import { StudySession } from "./studysession";
 import { ToDoList } from "./ToDoList";
 import "./Workspace.css";
 
@@ -7,10 +8,11 @@ import "./Workspace.css";
 export function Workspace() {
   return (
     <main className="workspace">
-      <section className="workspace__column" >
+      <section className="workspace__column">
         <ToDoList />
       </section>
-      <section className="workspace__column" >
+      <section className="workspace__column workspace__column--middle">
+        <StudySession />
         <DuckChat />
       </section>
       <section className="workspace__column workspace__column--rows">

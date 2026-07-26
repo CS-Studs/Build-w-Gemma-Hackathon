@@ -42,6 +42,9 @@
 }
 
 .widget__duck {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   cursor: grab;
   will-change: transform;
   filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.28));
@@ -59,6 +62,46 @@
     transform 160ms cubic-bezier(0.4, 0, 0.2, 1),
     filter 160ms ease-out;
   filter: drop-shadow(0 16px 14px rgba(0, 0, 0, 0.32));
+}
+
+.widget__timer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 94px;
+  min-height: 30px;
+  margin-top: 3px;
+  padding: 6px 10px;
+  color: #fff;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  background: rgba(12, 13, 16, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 999px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.38),
+    inset 0 1px rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.widget__timer.is-paused {
+  color: #fff4d6;
+  border-color: rgba(255, 211, 130, 0.78);
+}
+
+.widget__timer-state {
+  padding-left: 2px;
+  color: #ffd993;
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 0.58rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .widget__quit {
