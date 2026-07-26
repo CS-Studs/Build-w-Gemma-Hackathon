@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   type ActivityState,
   applyObservation,
@@ -11,8 +11,8 @@ import { analyseDesktop, recordAnalysisFailure } from "../screenAnalysis";
 export type DesktopWatch = {
   /** How long the user has spent on what, and what they are on now. */
   activity: ActivityState;
-  /** What the most recent reading said was on screen, for the duck to talk about. */
-  note: string;
+  /** What the duck had to say about the most recent reading. */
+  line: string;
 };
 
 /**
@@ -29,13 +29,21 @@ export function useDesktopAnalysis(
   enabled: boolean,
 ): DesktopWatch {
   const [activity, setActivity] = useState<ActivityState>(emptyActivity);
-  const [note, setNote] = useState("");
+  const [line, setLine] = useState("");
+
+  // The loop is started once and outlives any particular reading, so it cannot
+  // close over the run in progress. It needs to, though: the model is told how
+  // long the user has been at this, and that is only knowable here.
+  const current = useRef(activity);
+  useEffect(() => {
+    current.current = activity;
+  });
 
   // Starting or stopping the loop discards the run in progress. Whatever the
   // user did while the duck was not looking must not count for or against them.
   useEffect(() => {
     setActivity((previous) => restartRun(previous));
-    setNote("");
+    setLine("");
   }, [enabled]);
 
   useEffect(() => {
@@ -50,13 +58,16 @@ export function useDesktopAnalysis(
       if (inFlight || stopped) return;
       inFlight = true;
       try {
-        const { category, note: reading } = await analyseDesktop();
+        const run = current.current;
+        const elapsed = run.category === null ? null : Date.now() - run.since;
+
+        const { category, line: said } = await analyseDesktop(elapsed);
         // An unparseable reply is dropped rather than guessed at, which leaves
         // the current run intact instead of breaking it on a garbled line.
         if (category && !stopped) {
           const at = Date.now();
           setActivity((previous) => applyObservation(previous, category, at));
-          setNote(reading);
+          setLine(said);
         }
       } catch (error) {
         console.error("desktop analysis failed", error);
@@ -82,5 +93,5 @@ export function useDesktopAnalysis(
     saveTotals(activity.totals);
   }, [activity.totals]);
 
-  return { activity, note };
+  return { activity, line };
 }

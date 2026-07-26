@@ -59,9 +59,9 @@ export function Widget() {
   // Only watch the desktop while a session is actually counting. A paused or
   // absent timer means the user is not studying, so there is nothing to judge.
   const studying = Boolean(session?.runningSince);
-  const { activity, note } = useDesktopAnalysis(ANALYSIS_INTERVAL_MS, studying);
+  const { activity, line } = useDesktopAnalysis(ANALYSIS_INTERVAL_MS, studying);
   const { mood, hearts } = useDuckMood(activity);
-  const speech = useDuckSpeech(activity, note, studying);
+  const speech = useDuckSpeech(activity, line, studying);
 
   useEffect(() => {
     const blockMenu = (event: MouseEvent) => event.preventDefault();
