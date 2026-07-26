@@ -2,7 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
 import './DuckChat.css';
-import Markdown from 'react-markdown';
+import {
+  type UserProfile,
+  USER_PROFILE_CHANGED_EVENT,
+  USER_PROFILE_STORAGE_KEY,
+  buildDuckChatSystemInstruction,
+  loadUserProfile,
+} from './userProfileStore';
 
 // Initialize the SDK using the Vite environment variable
 const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
@@ -31,16 +37,37 @@ export function DuckChat() {
   // References
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatRef = useRef<any>(null);
+  const loadingRef = useRef(false);
+  const pendingProfileRef = useRef<UserProfile | null>(null);
 
-  // Initialize the Gemma chat session on component mount
-  useEffect(() => {
+  const replaceChatProfile = (profile: UserProfile) => {
+    const history = chatRef.current?.getHistory(true) ?? [];
     chatRef.current = ai.chats.create({
       model: 'gemma-4-31b-it',
-      config: {
-        systemInstruction:
-          'You are a warm but firm anti-procrastination tutor. Your goal is to help the user learn and break through mental blocks. Never just give the direct answer. Break problems down, ask guiding questions, and encourage them to find the solution themselves.',
-      },
+      config: { systemInstruction: buildDuckChatSystemInstruction(profile) },
+      history,
     });
+  };
+
+  // Initialize Gemma and apply saved profile changes without losing history.
+  useEffect(() => {
+    replaceChatProfile(loadUserProfile());
+    const applyProfile = (profile: UserProfile) => {
+      if (loadingRef.current) pendingProfileRef.current = profile;
+      else replaceChatProfile(profile);
+    };
+    const handleProfileChange = (event: Event) => {
+      applyProfile((event as CustomEvent<UserProfile>).detail);
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === USER_PROFILE_STORAGE_KEY) applyProfile(loadUserProfile());
+    };
+    window.addEventListener(USER_PROFILE_CHANGED_EVENT, handleProfileChange);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener(USER_PROFILE_CHANGED_EVENT, handleProfileChange);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   // Handle attaching an image
@@ -73,6 +100,7 @@ export function DuckChat() {
     setInputText('');
     setSelectedImage(null);
     setIsLoading(true);
+    loadingRef.current = true;
 
     try {
       // 2. Send text to Gemma
@@ -101,6 +129,11 @@ export function DuckChat() {
         },
       ]);
     } finally {
+      loadingRef.current = false;
+      if (pendingProfileRef.current) {
+        replaceChatProfile(pendingProfileRef.current);
+        pendingProfileRef.current = null;
+      }
       setIsLoading(false);
     }
   };

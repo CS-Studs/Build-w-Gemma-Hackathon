@@ -95,6 +95,136 @@
   outline-offset: 2px;
 }
 
+.user-modal {
+  width: min(88vw, 1100px);
+}
+
+.user-profile {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.user-profile__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 20px 24px 28px;
+  overflow-y: auto;
+  background: #fafbfc;
+  scrollbar-color: #cfd2d8 transparent;
+  scrollbar-width: thin;
+}
+
+.user-profile__notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+  padding: 11px 13px;
+  color: #535965;
+  font-size: 0.7rem;
+  background: #eef0ff;
+  border: 1px solid #dfe2fa;
+  border-radius: 10px;
+}
+
+.user-profile__notice strong { flex: 0 0 auto; color: #3f488f; }
+.user-profile__section + .user-profile__section { margin-top: 28px; }
+.user-profile__section > header { margin-bottom: 13px; }
+.user-profile__section h3 { margin: 0; color: #30353e; font-size: 0.94rem; }
+.user-profile__section header p { margin: 3px 0 0; color: #858a94; font-size: 0.69rem; }
+
+.user-profile__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.user-profile__field {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.user-profile__field > span,
+.user-profile__selects label > span {
+  color: #444a54;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.user-profile__field > small {
+  min-height: 1.15em;
+  margin: 3px 0 7px;
+  color: #858a94;
+  font-size: 0.63rem;
+  line-height: 1.35;
+}
+
+.user-profile__field input,
+.user-profile__field textarea,
+.user-profile__selects select {
+  width: 100%;
+  min-width: 0;
+  color: #30353e;
+  font: inherit;
+  font-size: 0.76rem;
+  background: #fff;
+  border: 1px solid #d9dce2;
+  border-radius: 8px;
+  outline: none;
+}
+
+.user-profile__field input,
+.user-profile__selects select { height: 36px; padding: 0 10px; }
+.user-profile__field textarea { min-height: 92px; padding: 9px 10px 24px; line-height: 1.45; resize: vertical; }
+.user-profile__field input:focus,
+.user-profile__field textarea:focus,
+.user-profile__selects select:focus { border-color: #7d87dd; box-shadow: 0 0 0 3px rgba(91, 103, 214, 0.12); }
+.user-profile__field input[aria-invalid="true"] { border-color: #c95c69; }
+.user-profile__field > b { margin-top: 4px; color: #b34755; font-size: 0.64rem; }
+.user-profile__field > em { position: absolute; right: 8px; bottom: 7px; color: #9a9fa8; font-size: 0.59rem; font-style: normal; pointer-events: none; }
+
+.user-profile__selects {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.user-profile__selects label { display: grid; gap: 7px; }
+
+.user-profile__footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 24px;
+  background: #fff;
+  border-top: 1px solid #e7e9ed;
+}
+
+.user-profile__footer > span { color: #858a94; font-size: 0.65rem; }
+.user-profile__footer > div { display: flex; gap: 8px; }
+.user-profile__footer button { padding: 8px 13px; font-size: 0.72rem; font-weight: 750; border: 0; border-radius: 8px; cursor: pointer; }
+.user-profile__cancel { color: #555b65; background: #eceef2; }
+.user-profile__save { color: #fff; background: #5b67d6; }
+.user-profile__save:hover { background: #4d59c5; }
+.user-profile__save:disabled { opacity: 0.42; cursor: not-allowed; }
+
+@media (max-width: 700px) {
+  .user-profile__content { padding-inline: 16px; }
+  .user-profile__grid,
+  .user-profile__selects { grid-template-columns: minmax(0, 1fr); }
+  .user-profile__footer { padding-inline: 16px; }
+  .user-profile__footer > span { display: none; }
+  .user-profile__footer > div { width: 100%; justify-content: flex-end; }
+}
+
 @media (prefers-color-scheme: dark) {
   .user-section {
     --user-border: #3b3b43;
@@ -121,6 +251,21 @@
     background: #303037;
     border-color: #494951;
   }
+
+  .user-profile__content { background: #242429; }
+  .user-profile__notice { color: #c8cad3; background: #30313d; border-color: #444762; }
+  .user-profile__notice strong { color: #b5baff; }
+  .user-profile__section h3,
+  .user-profile__field > span,
+  .user-profile__selects label > span { color: #eeeef0; }
+  .user-profile__section header p,
+  .user-profile__field > small,
+  .user-profile__footer > span { color: #a2a4ad; }
+  .user-profile__field input,
+  .user-profile__field textarea,
+  .user-profile__selects select { color: #eeeef0; background: #303037; border-color: #494951; }
+  .user-profile__footer { background: #29292f; border-color: #3b3b43; }
+  .user-profile__cancel { color: #dedee2; background: #3b3b43; }
 
 }
 
