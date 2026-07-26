@@ -1,0 +1,80 @@
+/* Note: Relies on the shared .modal-overlay, .modal-content, and .action-btn 
+   styles you already have in Flashcard.css */
+
+/* --- Tool Trigger Pane --- */
+.notes-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  background: #242429;
+  border: 1px solid #34343a !important;
+  border-radius: 10px;
+  transition: all 150ms ease;
+}
+
+.notes-trigger:hover {
+  background: #2a2a31;
+  border-color: #5b67d6 !important;
+  transform: translateY(-2px);
+}
+
+/* --- Notes Modal Sizing --- */
+.modal-content.notes-modal {
+  display: flex;
+  flex-direction: column;
+  height: 70vh;
+  max-width: 600px;
+}
+
+/* --- Textarea Container --- */
+.notes-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.notes-textarea {
+  flex: 1;
+  width: 100%;
+  padding: 16px;
+  background-color: #1c1c1f;
+  color: #eeeef0;
+  border: 1px inset #2a2a31;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: none; /* Prevents manual resizing breaking the modal */
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+.notes-textarea:focus {
+  border-color: #5b67d6;
+}
+
+.notes-textarea::placeholder {
+  color: #7f848d;
+  opacity: 0.7;
+}
+
+/* --- Save Indicator --- */
+.save-indicator {
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+  color: #8b9099;
+  flex: 1;
+}
+
+.modal-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
