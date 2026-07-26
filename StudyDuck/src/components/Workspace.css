@@ -24,9 +24,19 @@
 }
 
 .workspace__column--rows {
-  display: grid;
-  grid-template-rows: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
+  overflow: hidden;
+}
+
+.workspace__column-panes {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+  min-height: 0;
 }
 
 .workspace__column--middle {

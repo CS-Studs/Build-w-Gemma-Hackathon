@@ -1,11 +1,5 @@
-import { type KeyboardEvent, useEffect, useState } from "react";
-import {
-  type CompletedStudySession,
-  type StoredStudySessions,
-  STUDY_SESSIONS_CHANGED_EVENT,
-  STUDY_SESSION_STORAGE_KEY,
-  loadStudySessions,
-} from "./studySessionStore";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import "./UserSection.css";
 
 type StoredUserProfile = {
@@ -45,34 +39,35 @@ function saveUserName(name: string): void {
   }
 }
 
-function formatTotalStudyTime(history: CompletedStudySession[]): string {
-  const totalMs = history.reduce(
-    (total, session) => total + session.durationMs,
-    0,
-  );
-  const totalMinutes = Math.floor(totalMs / 60_000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return `${hours}h ${minutes}m`;
-}
-
 export function UserSection() {
   const [name, setName] = useState(loadUserName);
   const [draftName, setDraftName] = useState(name);
   const [editing, setEditing] = useState(false);
-  const [history, setHistory] = useState<CompletedStudySession[]>(
-    () => loadStudySessions().history,
-  );
+  const [modalOpen, setModalOpen] = useState(false);
+  const cardRef = useRef<HTMLElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const handleSessionChange = (event: Event) => {
-      const sessions = (event as CustomEvent<StoredStudySessions>).detail;
-      setHistory(sessions.history);
-    };
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === STUDY_SESSION_STORAGE_KEY) {
-        setHistory(loadStudySessions().history);
+    if (!modalOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setModalOpen(false);
+      if (event.key === "Tab") {
+        event.preventDefault();
+        closeRef.current?.focus();
       }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+      cardRef.current?.focus();
+    };
+  }, [modalOpen]);
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
       if (event.key === PROFILE_STORAGE_KEY) {
         const storedName = loadUserName();
         setName(storedName);
@@ -80,13 +75,8 @@ export function UserSection() {
       }
     };
 
-    window.addEventListener(STUDY_SESSIONS_CHANGED_EVENT, handleSessionChange);
     window.addEventListener("storage", handleStorage);
     return () => {
-      window.removeEventListener(
-        STUDY_SESSIONS_CHANGED_EVENT,
-        handleSessionChange,
-      );
       window.removeEventListener("storage", handleStorage);
     };
   }, []);
@@ -117,7 +107,25 @@ export function UserSection() {
   };
 
   return (
-    <section className="user-section" aria-label="User summary">
+    <section
+      ref={cardRef}
+      className="user-section"
+      role="button"
+      tabIndex={0}
+      aria-label="Open user profile"
+      aria-haspopup="dialog"
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest("button, input")) return;
+        setModalOpen(true);
+      }}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          setModalOpen(true);
+        }
+      }}
+    >
       <div className="user-section__identity">
         <p className="user-section__eyebrow">Student</p>
         {editing ? (
@@ -142,11 +150,47 @@ export function UserSection() {
           </button>
         )}
       </div>
-
-      <div className="user-section__total" aria-live="polite">
-        <strong>{formatTotalStudyTime(history)}</strong>
-        <span>Total studied</span>
-      </div>
+      {modalOpen &&
+        createPortal(
+          <div
+            className="stats-modal__backdrop"
+            onPointerDown={(event) => {
+              event.stopPropagation();
+              if (event.target === event.currentTarget) setModalOpen(false);
+            }}
+          >
+            <section
+              className="stats-modal user-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="user-modal-title"
+              aria-describedby="user-modal-description"
+            >
+              <header className="stats-modal__header">
+                <div>
+                  <p className="stats-modal__eyebrow">Your profile</p>
+                  <h2 id="user-modal-title">User</h2>
+                  <p id="user-modal-description">
+                    Your profile details will live here.
+                  </p>
+                </div>
+                <button
+                  ref={closeRef}
+                  className="stats-modal__close"
+                  type="button"
+                  aria-label="Close user profile"
+                  onClick={() => setModalOpen(false)}
+                >
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="m5 5 10 10M15 5 5 15" />
+                  </svg>
+                </button>
+              </header>
+              <div className="stats-modal__body" />
+            </section>
+          </div>,
+          document.body,
+        )}
     </section>
   );
 }

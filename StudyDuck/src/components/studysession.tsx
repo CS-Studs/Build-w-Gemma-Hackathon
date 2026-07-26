@@ -157,14 +157,6 @@ export function StudySession() {
                 <p className="study-session__started">
                   Started {formatDateTime(active.startedAt)}
                 </p>
-                <span
-                  className={`study-session__status${
-                    running ? "" : " is-paused"
-                  }`}
-                >
-                  <span aria-hidden="true" />
-                  {running ? "In progress" : "Paused"}
-                </span>
               </>
             ) : (
               <input
