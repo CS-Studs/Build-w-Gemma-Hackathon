@@ -1,0 +1,45 @@
+[data-window="workspace"] body {
+  background: #f6f6f6;
+  color: #18181b;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  height: 100%;
+  padding: 16px;
+}
+
+.workspace__column,
+.workspace__pane {
+  min-height: 0;
+}
+
+.workspace__column--rows {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 16px;
+}
+
+/* Placeholder outlines so the empty scaffold is visible. Drop this rule once
+   the panes have real content. */
+.workspace__column:not(.workspace__column--rows),
+.workspace__pane {
+  border: 1px dashed rgba(120, 120, 130, 0.35);
+  border-radius: 10px;
+}
+
+.workspace__pane--duck {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-window="workspace"] body {
+    background: #1c1c1f;
+    color: #f4f4f5;
+  }
+}

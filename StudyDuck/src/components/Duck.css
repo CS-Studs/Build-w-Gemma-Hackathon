@@ -1,0 +1,9 @@
+.duck {
+  display: block;
+  width: 150px;
+  height: auto;
+  -webkit-user-drag: none;
+  /* Presses land on whatever wraps the duck -- the widget's drag surface or the
+     workspace button -- and the native image drag never starts. */
+  pointer-events: none;
+}
