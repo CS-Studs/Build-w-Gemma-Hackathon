@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import './Notes.css';
 
 // Define what a single note looks like
@@ -12,6 +13,7 @@ export function Notes() {
   const [isOpen, setIsOpen] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [isPreviewing, setIsPreviewing] = useState(false);
 
   // Load notes from local storage when the component mounts
   useEffect(() => {
@@ -44,6 +46,7 @@ export function Notes() {
     };
     setNotes([newNote, ...notes]);
     setActiveNoteId(newNote.id);
+    setIsPreviewing(false);
   };
 
   // Delete a note
@@ -55,6 +58,7 @@ export function Notes() {
     // If we deleted the active note, switch to another one or null
     if (activeNoteId === id) {
       setActiveNoteId(updatedNotes.length > 0 ? updatedNotes[0].id : null);
+      setIsPreviewing(false);
     }
   };
 
@@ -111,7 +115,10 @@ export function Notes() {
                       <div
                         key={note.id}
                         className={`note-list-item ${activeNoteId === note.id ? 'active' : ''}`}
-                        onClick={() => setActiveNoteId(note.id)}
+                        onClick={() => {
+                          setActiveNoteId(note.id);
+                          setIsPreviewing(false);
+                        }}
                       >
                         <span className="note-title-truncate">
                           {note.title || 'Untitled Note'}
@@ -143,17 +150,40 @@ export function Notes() {
                         })
                       }
                     />
-                    <textarea
-                      className="notes-textarea"
-                      placeholder="Start typing your notes here..."
-                      value={activeNote.content}
-                      onChange={(e) =>
-                        updateActiveNote(activeNote.id, {
-                          content: e.target.value,
-                        })
-                      }
-                      autoFocus
-                    />
+                    <div className="notes-markdown-workspace">
+                      {isPreviewing ? (
+                        <section
+                          className="notes-markdown-pane notes-markdown-preview"
+                          aria-label="Markdown preview"
+                        >
+                          <span className="notes-markdown-label">Preview</span>
+                          <div className="notes-markdown-rendered">
+                            {activeNote.content.trim() ? (
+                              <ReactMarkdown>{activeNote.content}</ReactMarkdown>
+                            ) : (
+                              <p className="notes-markdown-placeholder">
+                                This note is empty.
+                              </p>
+                            )}
+                          </div>
+                        </section>
+                      ) : (
+                        <section className="notes-markdown-pane">
+                          <span className="notes-markdown-label">Markdown</span>
+                          <textarea
+                            className="notes-textarea"
+                            placeholder="Write Markdown here..."
+                            value={activeNote.content}
+                            onChange={(e) =>
+                              updateActiveNote(activeNote.id, {
+                                content: e.target.value,
+                              })
+                            }
+                            autoFocus
+                          />
+                        </section>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <div className="empty-editor-state">
@@ -170,9 +200,10 @@ export function Notes() {
               </span>
               <button
                 className="action-btn primary"
-                onClick={() => setIsOpen(false)}
+                onClick={() => setIsPreviewing((previewing) => !previewing)}
+                disabled={!activeNote}
               >
-                Done
+                {isPreviewing ? 'Edit' : 'Done'}
               </button>
             </div>
           </div>

@@ -28,6 +28,20 @@ export function Workspace() {
           <Mindmap />
           <Flashcard />
           <Notes />
+          <button
+            type="button"
+            className="workspace__pane tool-trigger workspace__placeholder-tool"
+            disabled
+          >
+            <h3>Feature tbd..</h3>
+          </button>
+          <button
+            type="button"
+            className="workspace__pane tool-trigger workspace__placeholder-tool"
+            disabled
+          >
+            <h3>Feature tbd..</h3>
+          </button>
           <div className="workspace__pane workspace__pane--duck">
             <DuckButton />
           </div>

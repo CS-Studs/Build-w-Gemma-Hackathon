@@ -38,7 +38,7 @@
 .workspace__column-panes {
   display: grid;
   flex: 1 1 auto;
-  grid-template-rows: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(0, 1fr));
   gap: 16px;
   min-width: 0;
   min-height: 0;
@@ -57,6 +57,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.workspace__placeholder-tool {
+  width: 100%;
+  padding: 10px;
+}
+
+.workspace__placeholder-tool:disabled {
+  color: inherit;
+  opacity: 0.62;
+  cursor: default;
+  transform: none;
 }
 
 .workspace__column--middle {
