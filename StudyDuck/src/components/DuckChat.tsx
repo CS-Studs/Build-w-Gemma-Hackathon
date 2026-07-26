@@ -37,48 +37,64 @@ export function DuckChat() {
   // References
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatRef = useRef<any>(null);
+  const loadingRef = useRef(false);
+  const pendingProfileRef = useRef<UserProfile | null>(null);
 
   // Safety check so React Strict Mode doesn't send two greetings
   const hasInitialized = useRef(false);
 
-  // Initialize the Gemma chat session on component mount
+  const replaceChatProfile = (profile: UserProfile) => {
+    const history = chatRef.current?.getHistory(true) ?? [];
+    chatRef.current = ai.chats.create({
+      model: 'gemma-4-31b-it',
+      config: {
+        temperature: 0.5,
+        systemInstruction: buildDuckChatSystemInstruction(profile),
+      },
+      history,
+    });
+  };
+
+  const applyPendingProfile = () => {
+    const pending = pendingProfileRef.current;
+    pendingProfileRef.current = null;
+    if (!pending) return;
+    try {
+      replaceChatProfile(pending);
+    } catch (error) {
+      console.error('Error applying DuckChat personalization:', error);
+    }
+  };
+
+  // Initialize Gemma, keep the one-time welcome, and respond to profile updates.
   useEffect(() => {
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
+    const applyProfile = (profile: UserProfile) => {
+      if (loadingRef.current) pendingProfileRef.current = profile;
+      else {
+        try {
+          replaceChatProfile(profile);
+        } catch (error) {
+          console.error('Error applying DuckChat personalization:', error);
+        }
+      }
+    };
+    const handleProfileChange = (event: Event) => {
+      applyProfile((event as CustomEvent<UserProfile>).detail);
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === USER_PROFILE_STORAGE_KEY) {
+        applyProfile(loadUserProfile());
+      }
+    };
+
+    window.addEventListener(USER_PROFILE_CHANGED_EVENT, handleProfileChange);
+    window.addEventListener('storage', handleStorage);
 
     const startChat = async () => {
-      // 1. Create the chat session
-      chatRef.current = ai.chats.create({
-        model: 'gemma-4-31b-it',
-        config: {
-          temperature: 0.5,
-          systemInstruction: `You are an adaptive, psychologically-aware anti-procrastination tutor. Your core directive is to build, utilize, and continuously update a 'Psychological Profile' of the user to tailor their learning experience.
-
-          ### THE LIVING PROFILE (Continuous Monitoring)
-          You must actively listen to both the user's explicit statements and implicit cues (frustration, sudden task-switching, negative self-talk, tone). Use these to constantly refine your internal profile of their psychology (e.g., ADHD, perfectionism, executive dysfunction, burnout). If they show signs of frustration or distraction, immediately adapt your strategy.
-
-          ### PHASE 1: INTAKE & PROFILING
-          When the conversation starts, your goal is to understand both the *what* and the *why*.
-          1. Identify the specific task they are avoiding.
-          2. Gently probe the psychological or neurological root of their procrastination. (e.g., "Are you feeling overwhelmed by the size of it, is your ADHD making it hard to start, or are you worried it won't be perfect?")
-          *Rule: Do not start tutoring until you have a baseline psychological profile.*
-
-          ### PHASE 2: TAILORED TUTORING
-          Directly apply psychological frameworks to your teaching based on the user's profile:
-          - ADHD / EXECUTIVE DYSFUNCTION: Provide high-dopamine, gamified interactions. Use extreme structure, issue only one micro-step at a time, and give frequent positive reinforcement.
-          - PERFECTIONISM / ANXIETY: Focus on "drafting" rather than "finishing." Validate their feelings, lower the stakes, and celebrate messy, imperfect progress.
-          - BURNOUT / OVERWHELM: Use ridiculously small micro-steps. Offer extreme empathy and require minimal cognitive load per interaction.
-
-          ### ONGOING RULES
-          - Never give the direct answer. Break problems down and use guiding questions so they find the solution themselves.
-          - Keep responses concise and highly conversational.
-          - If your current strategy isn't working, acknowledge it, update your profile, and pivot your approach.`,
-        },
-      });
-
-      // 2. Secretly ask the AI to start the conversation
       setIsLoading(true);
+      loadingRef.current = true;
       try {
+        replaceChatProfile(loadUserProfile());
         const response = await chatRef.current.sendMessage({
           message:
             'SYSTEM PROMPT: The user just opened the app. Introduce yourself warmly in one brief sentence, and ask your first profiling question to find out what they are avoiding today.',
@@ -94,12 +110,29 @@ export function DuckChat() {
         ]);
       } catch (error) {
         console.error('Error starting chat:', error);
+        setMessages([
+          {
+            id: Date.now(),
+            text: "I'm having trouble connecting right now. Please check your network or API key.",
+            sender: 'bot',
+          },
+        ]);
       } finally {
+        loadingRef.current = false;
         setIsLoading(false);
+        applyPendingProfile();
       }
     };
 
-    startChat();
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      void startChat();
+    }
+
+    return () => {
+      window.removeEventListener(USER_PROFILE_CHANGED_EVENT, handleProfileChange);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   // Handle attaching an image
@@ -132,9 +165,12 @@ export function DuckChat() {
     setInputText('');
     setSelectedImage(null);
     setIsLoading(true);
-    loadingRef.current = true;
 
     try {
+      loadingRef.current = true;
+      if (!chatRef.current) {
+        throw new Error('DuckChat has not finished initializing.');
+      }
       // 2. Send text to Gemma
       // Note: We are currently only sending the text prompt.
       // Sending actual image data to the API requires converting the file to base64 first.
@@ -162,11 +198,8 @@ export function DuckChat() {
       ]);
     } finally {
       loadingRef.current = false;
-      if (pendingProfileRef.current) {
-        replaceChatProfile(pendingProfileRef.current);
-        pendingProfileRef.current = null;
-      }
       setIsLoading(false);
+      applyPendingProfile();
     }
   };
 
