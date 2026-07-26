@@ -23,7 +23,7 @@
   display: flex;
   flex-direction: column;
   height: 80vh;
-  max-width: 800px; /* Widened to fit the sidebar comfortably */
+  max-width: 800px;
 }
 
 /* --- Two-Column Layout --- */
@@ -47,6 +47,12 @@
 
 .full-width {
   width: 100%;
+}
+
+.notes-sidebar > .action-btn {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 9px 12px;
 }
 
 .notes-list {
@@ -119,6 +125,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+  min-height: 0;
 }
 
 .note-title-input {
@@ -138,9 +146,34 @@
   border-bottom-color: #5b67d6;
 }
 
+.notes-markdown-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.notes-markdown-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.notes-markdown-label {
+  margin-bottom: 6px;
+  color: #8b9099;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .notes-textarea {
   flex: 1;
   width: 100%;
+  min-height: 0;
   padding: 16px;
   background-color: #1c1c1f;
   color: #eeeef0;
@@ -162,6 +195,55 @@
 .notes-textarea::placeholder {
   color: #7f848d;
   opacity: 0.7;
+}
+
+.notes-markdown-rendered {
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  overflow: auto;
+  color: #eeeef0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  background: #1c1c1f;
+  border: 1px solid #34343a;
+  border-radius: 8px;
+}
+
+.notes-markdown-rendered > :first-child {
+  margin-top: 0;
+}
+
+.notes-markdown-rendered > :last-child {
+  margin-bottom: 0;
+}
+
+.notes-markdown-rendered pre {
+  padding: 10px;
+  overflow-x: auto;
+  background: #2a2a31;
+  border-radius: 6px;
+}
+
+.notes-markdown-rendered code {
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.notes-markdown-rendered a {
+  color: #9da5ff;
+}
+
+.notes-markdown-rendered blockquote {
+  margin-inline: 0;
+  padding-left: 12px;
+  color: #b6b8c0;
+  border-left: 3px solid #5b67d6;
+}
+
+.notes-markdown-placeholder {
+  margin: 0;
+  color: #7f848d;
 }
 
 /* --- Empty Editor State --- */
@@ -192,9 +274,37 @@
   flex: 1;
 }
 
-.modal-controls {
+.notes-modal > .modal-controls {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 12px;
+  margin-top: 0;
+}
+
+.notes-modal > .modal-controls .action-btn {
+  flex: 0 0 auto;
+  min-width: 92px;
+  padding: 9px 16px;
+}
+
+@media (max-width: 700px) {
+  .modal-content.notes-modal {
+    padding: 18px;
+  }
+
+  .notes-layout {
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .notes-sidebar {
+    width: 180px;
+    gap: 12px;
+    padding-right: 14px;
+  }
+
+  .notes-markdown-pane {
+    min-height: 180px;
+  }
 }
