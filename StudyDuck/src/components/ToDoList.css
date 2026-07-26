@@ -30,7 +30,8 @@
 }
 
 .icon-button,
-.drag-handle {
+.drag-handle,
+.todo-list__collapse {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
@@ -46,6 +47,7 @@
 
 .icon-button svg,
 .drag-handle svg,
+.todo-list__collapse svg,
 .todo-item__grip svg,
 .todo-list__add-item svg,
 .todo-panel__empty svg {
@@ -59,7 +61,8 @@
 }
 
 .icon-button:hover,
-.drag-handle:hover {
+.drag-handle:hover,
+.todo-list__collapse:hover {
   color: #31353c;
   background: #f1f2f4;
 }
@@ -198,6 +201,15 @@
   display: none;
 }
 
+.todo-list.is-collapsed .todo-list__items {
+  display: none;
+}
+
+.todo-list.is-collapsed .todo-list__header {
+  min-height: 40px;
+  padding-block: 5px;
+}
+
 .todo-list.is-dragging .todo-list__header {
   min-height: 40px;
   padding-block: 5px;
@@ -232,6 +244,20 @@
   height: 28px;
   cursor: grab;
   touch-action: none;
+}
+
+.todo-list__collapse {
+  width: 24px;
+  height: 28px;
+}
+
+.todo-list__collapse svg {
+  fill: none;
+  transition: transform 140ms ease;
+}
+
+.todo-list__collapse.is-collapsed svg {
+  transform: rotate(-90deg);
 }
 
 .drag-handle:active,
@@ -558,6 +584,10 @@
     transition: none;
   }
 
+  .todo-list__collapse svg {
+    transition: none;
+  }
+
   .todo-list.is-dragging {
     animation: none;
   }
@@ -602,6 +632,7 @@
   .todo-item:hover,
   .icon-button:hover,
   .drag-handle:hover,
+  .todo-list__collapse:hover,
   .todo-item__grip:hover,
   .todo-list__title:hover {
     background: #35353c;

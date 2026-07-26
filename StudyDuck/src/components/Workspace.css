@@ -4,6 +4,7 @@
 }
 
 .workspace {
+  --workspace-top-height: 76px;
   display: grid;
   grid-template-columns: minmax(280px, 2fr) minmax(0, 3fr) minmax(0, 2fr);
   gap: 16px;
@@ -32,16 +33,35 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  gap: 10px;
   overflow: hidden;
+}
+
+.workspace__column--first {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.workspace__column--first > .workspace__column.todo-panel {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border-radius: 14px;
+  box-shadow: none;
 }
 
 .workspace__column--middle .duckchat-container {
   flex: 1 1 auto;
   min-height: 0;
   height: auto;
+  overflow: hidden;
+  border: 1px solid rgba(120, 120, 130, 0.3);
+  border-radius: 14px;
 }
 
-.workspace__column:not(.workspace__column--rows),
+.workspace__column:not(.workspace__column--rows):not(.workspace__column--first):not(.workspace__column--middle),
 .workspace__pane {
   border: 1px dashed rgba(120, 120, 130, 0.3);
   border-radius: 14px;
@@ -54,9 +74,18 @@
   padding: 12px;
 }
 
+/* The middle column drops below the session component's 420px container
+   breakpoint before the overall workspace reaches its horizontal-scroll
+   breakpoint. Give both top cards the same two-row height at that point. */
+@media (max-width: 1100px) {
+  .workspace {
+    --workspace-top-height: 100px;
+  }
+}
+
 @media (max-width: 850px) {
   .workspace {
-    grid-template-columns: minmax(260px, 2fr) minmax(180px, 3fr) minmax(180px, 2fr);
+    grid-template-columns: minmax(260px, 2fr) minmax(360px, 3fr) minmax(180px, 2fr);
     overflow-x: auto;
   }
 }

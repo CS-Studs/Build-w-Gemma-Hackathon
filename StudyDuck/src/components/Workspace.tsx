@@ -2,13 +2,15 @@ import { DuckButton } from "./DuckButton";
 import { DuckChat } from "./DuckChat";
 import { StudySession } from "./studysession";
 import { ToDoList } from "./ToDoList";
+import { UserSection } from "./UserSection";
 import "./Workspace.css";
 
 /** The normal app window: three feature columns, with the duck in the last. */
 export function Workspace() {
   return (
     <main className="workspace">
-      <section className="workspace__column">
+      <section className="workspace__column workspace__column--first">
+        <UserSection />
         <ToDoList />
       </section>
       <section className="workspace__column workspace__column--middle">

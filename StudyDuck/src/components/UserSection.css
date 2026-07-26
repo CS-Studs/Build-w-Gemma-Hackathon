@@ -1,0 +1,123 @@
+.user-section {
+  --user-border: #e2e4e9;
+  --user-muted: #777d88;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  height: var(--workspace-top-height, 76px);
+  min-height: var(--workspace-top-height, 76px);
+  padding: 9px 12px 8px;
+  color: #282c33;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--user-border);
+  border-radius: 14px;
+  box-shadow: 0 5px 14px rgba(32, 36, 43, 0.05);
+}
+
+.user-section__identity {
+  min-width: 0;
+}
+
+.user-section__eyebrow {
+  margin: 0 0 3px;
+  color: #8a909a;
+  font-size: 0.65rem;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.user-section__name {
+  display: block;
+  max-width: 100%;
+  padding: 2px 3px;
+  overflow: hidden;
+  color: #282c33;
+  font-size: 1rem;
+  font-weight: 750;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  cursor: text;
+}
+
+.user-section__name:hover {
+  background: #f0f1f3;
+}
+
+.user-section__name-input {
+  width: min(100%, 170px);
+  min-width: 0;
+  padding: 4px 6px;
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  background: #fafafa;
+  border: 1px solid #d7dae0;
+  border-radius: 7px;
+  outline: none;
+}
+
+.user-section__name-input:focus {
+  border-color: #7d87dd;
+  box-shadow: 0 0 0 3px rgba(91, 103, 214, 0.12);
+}
+
+.user-section__total {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.user-section__total strong {
+  color: #343b89;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 1.18rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+}
+
+.user-section__total span {
+  margin-top: 1px;
+  color: var(--user-muted);
+  font-size: 0.62rem;
+  font-weight: 650;
+}
+
+.user-section button:focus-visible,
+.user-section input:focus-visible {
+  outline: 3px solid rgba(91, 103, 214, 0.2);
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .user-section {
+    --user-border: #3b3b43;
+    --user-muted: #a2a4ad;
+    color: #eeeef0;
+    background: rgba(36, 36, 41, 0.98);
+  }
+
+  .user-section__name {
+    color: #eeeef0;
+  }
+
+  .user-section__name:hover {
+    background: #35353c;
+  }
+
+  .user-section__name-input {
+    background: #303037;
+    border-color: #494951;
+  }
+
+  .user-section__total strong {
+    color: #aeb5ff;
+  }
+}

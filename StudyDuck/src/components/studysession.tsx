@@ -1,11 +1,16 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   type CompletedStudySession,
   type StoredStudySessions,
-  STUDY_SESSION_STORAGE_KEY,
   elapsedForSession,
   formatSessionDuration,
   loadStudySessions,
+  saveStudySessions,
 } from "./studySessionStore";
 import "./studysession.css";
 
@@ -35,11 +40,7 @@ export function StudySession() {
   const elapsedMs = active ? elapsedForSession(active, now) : 0;
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STUDY_SESSION_STORAGE_KEY, JSON.stringify(sessions));
-    } catch {
-      // Session tracking remains available until the current window closes.
-    }
+    saveStudySessions(sessions);
   }, [sessions]);
 
   useEffect(() => {
@@ -67,8 +68,7 @@ export function StudySession() {
     };
   }, [logOpen]);
 
-  const startSession = (event: FormEvent) => {
-    event.preventDefault();
+  const startSession = () => {
     const cleanTitle = title.trim();
     if (!cleanTitle || sessions.active) return;
 
@@ -151,9 +151,9 @@ export function StudySession() {
         <div className="study-session__focus-row">
           <div className="study-session__identity">
             <p className="study-session__eyebrow">Focus timer</p>
-            <h2>{active ? active.title : "Study session"}</h2>
-            {active && (
+            {active ? (
               <>
+                <h2>{active.title}</h2>
                 <p className="study-session__started">
                   Started {formatDateTime(active.startedAt)}
                 </p>
@@ -166,6 +166,18 @@ export function StudySession() {
                   {running ? "In progress" : "Paused"}
                 </span>
               </>
+            ) : (
+              <input
+                className="study-session__quick-title"
+                value={title}
+                maxLength={80}
+                placeholder="What are you studying?"
+                aria-label="Session title"
+                onChange={(event) => setTitle(event.target.value)}
+                onKeyDown={(event: ReactKeyboardEvent<HTMLInputElement>) => {
+                  if (event.key === "Enter") startSession();
+                }}
+              />
             )}
           </div>
           <div
@@ -178,7 +190,7 @@ export function StudySession() {
             {formatSessionDuration(elapsedMs)}
           </div>
           <div className="study-session__focus-actions">
-            {active && (
+            {active ? (
               <>
                 <button
                   type="button"
@@ -195,6 +207,15 @@ export function StudySession() {
                   Finish
                 </button>
               </>
+            ) : (
+              <button
+                className="study-session__button study-session__button--start"
+                type="button"
+                disabled={!title.trim()}
+                onClick={startSession}
+              >
+                Start
+              </button>
             )}
             <button
               type="button"
@@ -215,27 +236,6 @@ export function StudySession() {
             </button>
           </div>
         </div>
-
-        {!active && (
-          <form className="study-session__start" onSubmit={startSession}>
-            <label className="study-session__title-field">
-              <span className="sr-only">Session title</span>
-              <input
-                value={title}
-                maxLength={80}
-                placeholder="What are you studying?"
-                onChange={(event) => setTitle(event.target.value)}
-              />
-            </label>
-            <button
-              className="study-session__button study-session__button--start"
-              type="submit"
-              disabled={!title.trim()}
-            >
-              Start
-            </button>
-          </form>
-        )}
       </div>
 
       {logOpen && (

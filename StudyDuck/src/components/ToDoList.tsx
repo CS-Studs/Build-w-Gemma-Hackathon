@@ -18,6 +18,7 @@ type TodoList = {
   id: string;
   title: string;
   items: TodoItem[];
+  collapsed?: boolean;
 };
 
 type DragState =
@@ -44,6 +45,8 @@ function isTodoLists(value: unknown): value is TodoList[] {
       list !== null &&
       typeof list.id === "string" &&
       typeof list.title === "string" &&
+      (typeof (list as TodoList).collapsed === "undefined" ||
+        typeof (list as TodoList).collapsed === "boolean") &&
       Array.isArray(list.items) &&
       list.items.every(
         (item: unknown) =>
@@ -67,7 +70,7 @@ function loadLists(): TodoList[] {
     // Storage may be disabled or contain data from an older app version.
   }
 
-  return [{ id: makeId(), title: "My tasks", items: [] }];
+  return [{ id: makeId(), title: "My tasks", items: [], collapsed: false }];
 }
 
 function GripIcon() {
@@ -79,6 +82,14 @@ function GripIcon() {
       <circle cx="11" cy="8" r="1" />
       <circle cx="5" cy="12" r="1" />
       <circle cx="11" cy="12" r="1" />
+    </svg>
+  );
+}
+
+function CollapseIcon() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="m4 6 4 4 4-4" />
     </svg>
   );
 }
@@ -136,7 +147,7 @@ export function ToDoList() {
 
     setLists((current) => [
       ...current,
-      { id: makeId(), title, items: [] },
+      { id: makeId(), title, items: [], collapsed: false },
     ]);
     setNewListTitle("");
     setAddingList(false);
@@ -219,6 +230,19 @@ export function ToDoList() {
       : "";
     if (!window.confirm(`Delete “${list.title}”${detail}?`)) return;
     setLists((current) => current.filter((item) => item.id !== list.id));
+  };
+
+  const toggleListCollapsed = (list: TodoList) => {
+    const collapsed = !list.collapsed;
+    setLists((current) =>
+      current.map((item) =>
+        item.id === list.id ? { ...item, collapsed } : item,
+      ),
+    );
+    if (collapsed && addingToList === list.id) {
+      setAddingToList(null);
+      setNewItemText("");
+    }
   };
 
   const finishDrag = () => {
@@ -452,11 +476,14 @@ export function ToDoList() {
             const remaining = list.items.filter((item) => !item.completed).length;
             const isListDragging =
               dragging?.type === "list" && dragging.listId === list.id;
+            const isCollapsed = list.collapsed === true;
 
             return (
               <article
                 key={list.id}
-                className={`todo-list${isListDragging ? " is-dragging" : ""}`}
+                className={`todo-list${isListDragging ? " is-dragging" : ""}${
+                  isCollapsed ? " is-collapsed" : ""
+                }`}
                 data-todo-list-id={list.id}
               >
                 <header className="todo-list__header">
@@ -474,6 +501,21 @@ export function ToDoList() {
                     }
                   >
                     <GripIcon />
+                  </button>
+
+                  <button
+                    className={`todo-list__collapse${
+                      isCollapsed ? " is-collapsed" : ""
+                    }`}
+                    type="button"
+                    aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${
+                      list.title
+                    }`}
+                    aria-expanded={!isCollapsed}
+                    title={isCollapsed ? "Expand list" : "Collapse list"}
+                    onClick={() => toggleListCollapsed(list)}
+                  >
+                    <CollapseIcon />
                   </button>
 
                   <div className="todo-list__title-wrap">

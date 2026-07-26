@@ -21,6 +21,8 @@ export type StoredStudySessions = {
 };
 
 export const STUDY_SESSION_STORAGE_KEY = "studyduck.study-sessions.v1";
+export const STUDY_SESSIONS_CHANGED_EVENT =
+  "studyduck:study-sessions-changed";
 
 const EMPTY_STATE: StoredStudySessions = {
   version: 1,
@@ -82,6 +84,20 @@ export function loadStudySessions(): StoredStudySessions {
   } catch {
     return EMPTY_STATE;
   }
+}
+
+export function saveStudySessions(sessions: StoredStudySessions): void {
+  try {
+    localStorage.setItem(STUDY_SESSION_STORAGE_KEY, JSON.stringify(sessions));
+  } catch {
+    // Subscribers still receive the in-memory update when storage is blocked.
+  }
+
+  window.dispatchEvent(
+    new CustomEvent<StoredStudySessions>(STUDY_SESSIONS_CHANGED_EVENT, {
+      detail: sessions,
+    }),
+  );
 }
 
 export function elapsedForSession(
