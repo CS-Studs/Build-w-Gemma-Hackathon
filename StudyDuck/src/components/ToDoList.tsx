@@ -1,7 +1,7 @@
 import {
-  type DragEvent,
   type FormEvent,
   type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   useEffect,
   useRef,
   useState,
@@ -24,15 +24,9 @@ type DragState =
   | { type: "list"; listId: string }
   | { type: "item"; listId: string; itemId: string };
 
-type ItemDropTarget = {
-  listId: string;
-  itemId?: string;
-  position?: "before" | "after";
-};
-
-type ListDropTarget = {
-  listId: string;
-  position: "before" | "after";
+type PointerDragState = DragState & {
+  label: string;
+  width: number;
 };
 
 const STORAGE_KEY = "studyduck.todo-lists.v1";
@@ -114,11 +108,8 @@ export function ToDoList() {
   const [newItemText, setNewItemText] = useState("");
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
-  const [dragging, setDragging] = useState<DragState | null>(null);
-  const [listDropTarget, setListDropTarget] =
-    useState<ListDropTarget | null>(null);
-  const [itemDropTarget, setItemDropTarget] =
-    useState<ItemDropTarget | null>(null);
+  const [dragging, setDragging] = useState<PointerDragState | null>(null);
+  const [dragPoint, setDragPoint] = useState({ x: 0, y: 0 });
   const newListInput = useRef<HTMLInputElement>(null);
   const newItemInput = useRef<HTMLInputElement>(null);
 
@@ -230,60 +221,52 @@ export function ToDoList() {
     setLists((current) => current.filter((item) => item.id !== list.id));
   };
 
-  const beginDrag = (event: DragEvent, value: DragState) => {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", JSON.stringify(value));
-    setDragging(value);
-  };
-
   const finishDrag = () => {
     setDragging(null);
-    setListDropTarget(null);
-    setItemDropTarget(null);
   };
 
-  const dropList = (event: DragEvent, targetListId: string) => {
-    if (dragging?.type !== "list") return;
-    event.preventDefault();
-
+  const reorderList = (
+    draggedListId: string,
+    targetListId: string,
+    position: "before" | "after",
+  ) => {
     setLists((current) => {
-      const from = current.findIndex((list) => list.id === dragging.listId);
-      if (from < 0 || dragging.listId === targetListId) return current;
+      const from = current.findIndex((list) => list.id === draggedListId);
+      if (from < 0 || draggedListId === targetListId) return current;
       const next = [...current];
       const [moved] = next.splice(from, 1);
       const targetIndex = next.findIndex((list) => list.id === targetListId);
-      const insertAt =
-        targetIndex + (listDropTarget?.position === "after" ? 1 : 0);
+      if (targetIndex < 0) return current;
+      const insertAt = targetIndex + (position === "after" ? 1 : 0);
       next.splice(insertAt, 0, moved);
+      if (next.every((list, index) => list.id === current[index]?.id)) {
+        return current;
+      }
       return next;
     });
-    finishDrag();
   };
 
-  const moveItem = (
-    event: DragEvent,
+  const reorderItem = (
+    draggedItemId: string,
     targetListId: string,
     targetItemId?: string,
     position: "before" | "after" = "after",
   ) => {
-    if (dragging?.type !== "item") return;
-    event.preventDefault();
-    event.stopPropagation();
-
     setLists((current) => {
-      const sourceList = current.find((list) => list.id === dragging.listId);
-      const moved = sourceList?.items.find(
-        (item) => item.id === dragging.itemId,
+      const sourceList = current.find((list) =>
+        list.items.some((item) => item.id === draggedItemId),
       );
-      if (!moved) return current;
+      if (!sourceList) return current;
+      const moved = sourceList.items.find((item) => item.id === draggedItemId);
+      if (!moved || moved.id === targetItemId) return current;
 
       const withoutMoved = current.map((list) =>
-        list.id === dragging.listId
+        list.id === sourceList.id
           ? { ...list, items: list.items.filter((item) => item.id !== moved.id) }
           : list,
       );
 
-      return withoutMoved.map((list) => {
+      const next = withoutMoved.map((list) => {
         if (list.id !== targetListId) return list;
         const items = [...list.items];
         const targetIndex = targetItemId
@@ -296,9 +279,116 @@ export function ToDoList() {
         items.splice(insertAt, 0, moved);
         return { ...list, items };
       });
+
+      const unchanged = next.every((list, listIndex) =>
+        list.items.every(
+          (item, itemIndex) =>
+            item.id === current[listIndex]?.items[itemIndex]?.id,
+        ),
+      );
+      return unchanged ? current : next;
     });
-    finishDrag();
   };
+
+  const beginPointerDrag = (
+    event: ReactPointerEvent<HTMLElement>,
+    value: DragState,
+    label: string,
+  ) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const source = event.currentTarget.closest<HTMLElement>(
+      value.type === "list" ? ".todo-list" : ".todo-item",
+    );
+    setDragging({ ...value, label, width: source?.offsetWidth ?? 220 });
+    setDragPoint({ x: event.clientX, y: event.clientY });
+  };
+
+  useEffect(() => {
+    if (!dragging) return;
+
+    document.body.classList.add("is-todo-dragging");
+
+    const handlePointerMove = (event: PointerEvent) => {
+      event.preventDefault();
+      setDragPoint({ x: event.clientX, y: event.clientY });
+
+      const hovered = document.elementFromPoint(
+        event.clientX,
+        event.clientY,
+      ) as HTMLElement | null;
+      if (!hovered) return;
+
+      const scrollArea = document.querySelector<HTMLElement>(
+        ".todo-panel__lists",
+      );
+      if (scrollArea) {
+        const scrollBounds = scrollArea.getBoundingClientRect();
+        if (event.clientY < scrollBounds.top + 32) scrollArea.scrollBy(0, -8);
+        if (event.clientY > scrollBounds.bottom - 32) scrollArea.scrollBy(0, 8);
+      }
+
+      if (dragging.type === "list") {
+        const target = hovered.closest<HTMLElement>(
+          ".todo-list[data-todo-list-id]",
+        );
+        const targetListId = target?.dataset.todoListId;
+        if (!target || !targetListId || targetListId === dragging.listId) return;
+        const bounds = target.getBoundingClientRect();
+        reorderList(
+          dragging.listId,
+          targetListId,
+          event.clientY < bounds.top + bounds.height / 2 ? "before" : "after",
+        );
+        return;
+      }
+
+      const targetItem = hovered.closest<HTMLElement>("[data-todo-item-id]");
+      const targetItemId = targetItem?.dataset.todoItemId;
+      const targetListId = targetItem?.dataset.todoListId;
+      if (targetItem && targetItemId && targetListId) {
+        const bounds = targetItem.getBoundingClientRect();
+        reorderItem(
+          dragging.itemId,
+          targetListId,
+          targetItemId,
+          event.clientY < bounds.top + bounds.height / 2 ? "before" : "after",
+        );
+        return;
+      }
+
+      const targetList = hovered.closest<HTMLElement>(
+        ".todo-list[data-todo-list-id]",
+      );
+      const emptyTargetListId = targetList?.dataset.todoListId;
+      if (emptyTargetListId) {
+        reorderItem(dragging.itemId, emptyTargetListId);
+      }
+    };
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") finishDrag();
+    };
+
+    window.addEventListener("pointermove", handlePointerMove, {
+      passive: false,
+    });
+    window.addEventListener("pointerup", finishDrag);
+    window.addEventListener("pointercancel", finishDrag);
+    window.addEventListener("blur", finishDrag);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.classList.remove("is-todo-dragging");
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", finishDrag);
+      window.removeEventListener("pointercancel", finishDrag);
+      window.removeEventListener("blur", finishDrag);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [dragging]);
 
   const completedCount = lists.reduce(
     (total, list) =>
@@ -366,43 +456,22 @@ export function ToDoList() {
             return (
               <article
                 key={list.id}
-                className={`todo-list${isListDragging ? " is-dragging" : ""}${
-                  listDropTarget?.listId === list.id
-                    ? ` is-list-drop-target is-list-drop-${listDropTarget.position}`
-                    : ""
-                }`}
-                onDragOver={(event) => {
-                  if (dragging?.type === "list") {
-                    event.preventDefault();
-                    event.dataTransfer.dropEffect = "move";
-                    const bounds = event.currentTarget.getBoundingClientRect();
-                    const position =
-                      event.clientY < bounds.top + bounds.height / 2
-                        ? "before"
-                        : "after";
-                    setListDropTarget({ listId: list.id, position });
-                  } else if (dragging?.type === "item") {
-                    event.preventDefault();
-                    event.dataTransfer.dropEffect = "move";
-                    setItemDropTarget({ listId: list.id });
-                  }
-                }}
-                onDrop={(event) => {
-                  if (dragging?.type === "list") dropList(event, list.id);
-                  else moveItem(event, list.id);
-                }}
+                className={`todo-list${isListDragging ? " is-dragging" : ""}`}
+                data-todo-list-id={list.id}
               >
                 <header className="todo-list__header">
                   <button
                     className="drag-handle"
                     type="button"
-                    draggable
                     aria-label={`Drag to reorder ${list.title}`}
                     title="Drag to reorder list"
-                    onDragStart={(event) =>
-                      beginDrag(event, { type: "list", listId: list.id })
+                    onPointerDown={(event) =>
+                      beginPointerDrag(
+                        event,
+                        { type: "list", listId: list.id },
+                        list.title,
+                      )
                     }
-                    onDragEnd={finishDrag}
                   >
                     <GripIcon />
                   </button>
@@ -447,62 +516,34 @@ export function ToDoList() {
                   {list.items.map((item) => {
                     const isItemDragging =
                       dragging?.type === "item" && dragging.itemId === item.id;
-                    const isDropTarget =
-                      itemDropTarget?.listId === list.id &&
-                      itemDropTarget.itemId === item.id;
-                    const itemDropPosition = isDropTarget
-                      ? itemDropTarget.position
-                      : undefined;
-
                     return (
                       <div
                         key={item.id}
                         className={`todo-item${item.completed ? " is-complete" : ""}${
                           isItemDragging ? " is-dragging" : ""
-                        }${
-                          itemDropPosition
-                            ? ` is-item-drop-target is-item-drop-${itemDropPosition}`
-                            : ""
                         }`}
-                        draggable
-                        onDragStart={(event) => {
-                          event.stopPropagation();
-                          beginDrag(event, {
-                            type: "item",
-                            listId: list.id,
-                            itemId: item.id,
-                          });
-                        }}
-                        onDragEnd={finishDrag}
-                        onDragOver={(event) => {
-                          if (dragging?.type !== "item") return;
-                          event.preventDefault();
-                          event.stopPropagation();
-                          event.dataTransfer.dropEffect = "move";
-                          const bounds =
-                            event.currentTarget.getBoundingClientRect();
-                          const position =
-                            event.clientY < bounds.top + bounds.height / 2
-                              ? "before"
-                              : "after";
-                          setItemDropTarget({
-                            listId: list.id,
-                            itemId: item.id,
-                            position,
-                          });
-                        }}
-                        onDrop={(event) =>
-                          moveItem(
-                            event,
-                            list.id,
-                            item.id,
-                            itemDropTarget?.position,
-                          )
-                        }
+                        data-todo-list-id={list.id}
+                        data-todo-item-id={item.id}
                       >
-                        <span className="todo-item__grip" aria-hidden="true">
+                        <button
+                          className="todo-item__grip"
+                          type="button"
+                          aria-label={`Drag to reorder ${item.text}`}
+                          title="Drag to reorder task"
+                          onPointerDown={(event) =>
+                            beginPointerDrag(
+                              event,
+                              {
+                                type: "item",
+                                listId: list.id,
+                                itemId: item.id,
+                              },
+                              item.text,
+                            )
+                          }
+                        >
                           <GripIcon />
-                        </span>
+                        </button>
                         <label className="todo-item__label">
                           <input
                             type="checkbox"
@@ -578,6 +619,22 @@ export function ToDoList() {
             </div>
           )}
         </div>
+        {dragging && (
+          <div
+            className={`todo-drag-preview todo-drag-preview--${dragging.type}`}
+            style={{
+              left: dragPoint.x,
+              top: dragPoint.y,
+              width: Math.min(dragging.width, 320),
+            }}
+            aria-hidden="true"
+          >
+            <span className="todo-drag-preview__grip">
+              <GripIcon />
+            </span>
+            <span>{dragging.label}</span>
+          </div>
+        )}
     </section>
   );
 }
