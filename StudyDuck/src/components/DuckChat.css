@@ -1,34 +1,18 @@
-/* 1. Define Light & Dark Theme Variables */
+/* 1. Define Dark Theme Variables */
 .duckchat-container {
-  /* Light mode defaults */
   --chat-bg: transparent;
-  --chat-text: #18181b;
+  --chat-text: #f4f4f5;
   --chat-border: rgba(120, 120, 130, 0.35);
 
-  --user-bubble-bg: #18181b;
-  --user-bubble-text: #f6f6f6;
+  --user-bubble-bg: #f4f4f5;
+  --user-bubble-text: #1c1c1f;
 
-  --bot-bubble-bg: #e4e4e7; /* Subtle light gray */
-  --bot-bubble-text: #18181b;
+  --bot-bubble-bg: #27272a; /* Subtle dark gray */
+  --bot-bubble-text: #f4f4f5;
 
   --input-bg: transparent;
   --input-border: rgba(120, 120, 130, 0.35);
-  --input-focus: #18181b;
-}
-
-@media (prefers-color-scheme: dark) {
-  .duckchat-container {
-    /* Dark mode overrides */
-    --chat-text: #f4f4f5;
-
-    --user-bubble-bg: #f4f4f5;
-    --user-bubble-text: #1c1c1f;
-
-    --bot-bubble-bg: #27272a; /* Subtle dark gray */
-    --bot-bubble-text: #f4f4f5;
-
-    --input-focus: #f4f4f5;
-  }
+  --input-focus: #f4f4f5;
 }
 
 /* 2. Container Layout */
