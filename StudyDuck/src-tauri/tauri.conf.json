@@ -12,9 +12,16 @@
   "app": {
     "windows": [
       {
-        "title": "studyduck",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "StudyDuck",
+        "width": 210,
+        "height": 240,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "center": true
       }
     ],
     "security": {
