@@ -26,4 +26,10 @@ tauri-plugin-http = "2"
 tauri-plugin-fs = "2"
 xcap = "0.9.7"
 base64 = "0.23.0"
+# Not used directly -- capture.rs goes through `xcap::image`. xcap depends on
+# image with default features off, which leaves the JPEG encoder out and makes
+# encoding fail at runtime with "the image format `Jpeg` is not supported".
+# Declaring the same version here turns that one feature back on, since Cargo
+# unifies features across the graph.
+image = { version = "0.25", default-features = false, features = ["jpeg"] }
 

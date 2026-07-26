@@ -31,13 +31,38 @@ export type DesktopAnalysis = {
   category: ActivityCategory | null;
   /** The raw single line the model replied with. */
   text: string;
-  /** Where the note was written. */
+  /** The log the line was appended to. */
   path: string;
 };
 
 function parseCategory(text: string): ActivityCategory | null {
   const head = text.trim().split("|")[0]?.trim().toLowerCase();
   return ACTIVITY_CATEGORIES.find((category) => category === head) ?? null;
+}
+
+/** Appends one timestamped line to the analysis log. */
+function fileNote(body: string): Promise<string> {
+  // The log is one entry per line. The model is asked for a single line and an
+  // error message is usually one, but neither is guaranteed, so anything that
+  // wrapped gets folded back before it can break the shape of the file.
+  const line = body.replace(/\s+/g, " ").trim();
+
+  return invoke<string>("save_analysis", {
+    text: `${new Date().toISOString()}  ${line}`,
+  });
+}
+
+/**
+ * Files a failure alongside the verdicts.
+ *
+ * The widget has no title bar and swallows right clicks, so its devtools are
+ * effectively unreachable and a `console.error` there is invisible. Writing
+ * failures to the same folder is the only way a broken run looks different from
+ * a run that never happened.
+ */
+export function recordAnalysisFailure(error: unknown): Promise<string> {
+  const detail = error instanceof Error ? error.message : String(error);
+  return fileNote(`FAILED: ${detail}`);
 }
 
 /**
@@ -64,9 +89,7 @@ export async function analyseDesktop(): Promise<DesktopAnalysis> {
   });
 
   const text = (response.text ?? "").trim();
-  const path = await invoke<string>("save_analysis", {
-    text: `${new Date().toISOString()}\n${text}\n`,
-  });
+  const path = await fileNote(text);
 
   return { category: parseCategory(text), text, path };
 }

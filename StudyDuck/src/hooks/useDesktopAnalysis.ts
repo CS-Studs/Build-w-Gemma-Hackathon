@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { analyseDesktop } from "../screenAnalysis";
+import { analyseDesktop, recordAnalysisFailure } from "../screenAnalysis";
 
 /**
  * Captures and classifies the desktop on a fixed interval while mounted.
@@ -22,11 +22,16 @@ export function useDesktopAnalysis(intervalMs: number) {
         await analyseDesktop();
       } catch (error) {
         console.error("desktop analysis failed", error);
+        // Best effort: if this fails too there is nowhere left to report it.
+        await recordAnalysisFailure(error).catch(() => {});
       } finally {
         inFlight = false;
       }
     };
 
+    // Look at the desktop as soon as the duck appears rather than leaving the
+    // first interval to expire, so a fresh run produces a note immediately.
+    void tick();
     const timer = window.setInterval(() => void tick(), intervalMs);
 
     return () => {

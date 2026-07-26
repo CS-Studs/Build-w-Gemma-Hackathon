@@ -1,8 +1,7 @@
 use std::{
     fs,
-    io::Cursor,
-    path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
+    io::{Cursor, Write},
+    path::PathBuf,
 };
 
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
@@ -12,11 +11,8 @@ use xcap::{
     image::{DynamicImage, ImageFormat, RgbaImage, imageops::FilterType},
 };
 
-const ANALYSIS_PREFIX: &str = "analysis-";
-
-/// How many analyses to keep. This directory is scratch space, so older notes
-/// are dropped once the count goes past this.
-const MAX_ANALYSES: usize = 60;
+/// The running log every verdict is appended to, one line per analysis.
+const ANALYSIS_FILE: &str = "analysis.txt";
 
 /// Screenshots are shrunk to this width before being sent off. A classifier
 /// only needs to see roughly what is on screen, and a full-resolution frame is
@@ -74,48 +70,20 @@ fn encode_jpeg(frame: RgbaImage) -> Result<Vec<u8>, String> {
     Ok(buffer)
 }
 
-/// Deletes the oldest files beyond `keep`.
-///
-/// Only touches files this module wrote: both the prefix and the extension are
-/// checked, so nothing else dropped in the folder is at risk.
-fn prune(dir: &Path, prefix: &str, extension: &str, keep: usize) -> std::io::Result<()> {
-    let mut existing: Vec<PathBuf> = fs::read_dir(dir)?
-        .filter_map(|entry| entry.ok())
-        .map(|entry| entry.path())
-        .filter(|path| {
-            path.file_name()
-                .and_then(|name| name.to_str())
-                .is_some_and(|name| name.starts_with(prefix) && name.ends_with(extension))
-        })
-        .collect();
-
-    if existing.len() <= keep {
-        return Ok(());
-    }
-
-    // Names embed a fixed-width millisecond timestamp, so sorting by name sorts
-    // by age.
-    existing.sort();
-    for stale in &existing[..existing.len() - keep] {
-        let _ = fs::remove_file(stale);
-    }
-
-    Ok(())
-}
-
-fn timestamp() -> Result<u128, String> {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|since| since.as_millis())
-        .map_err(|e| e.to_string())
-}
-
 /// Grabs the primary monitor and hands it back as a base64 JPEG.
 ///
 /// Nothing is written to disk: the frame exists only long enough to be sent to
 /// Gemma, and only the verdict is worth keeping.
+///
+/// Errors are echoed to stderr as well as returned: the caller is a frameless
+/// window whose console nobody can open, so the dev terminal is the only place
+/// a failure here would otherwise be seen.
 #[tauri::command]
 pub async fn capture_screen() -> Result<String, String> {
+    grab_screen().inspect_err(|error| eprintln!("capture_screen failed: {error}"))
+}
+
+fn grab_screen() -> Result<String, String> {
     let frame = primary_monitor()?
         .capture_image()
         .map_err(|e| e.to_string())?;
@@ -123,17 +91,26 @@ pub async fn capture_screen() -> Result<String, String> {
     Ok(BASE64.encode(encode_jpeg(frame)?))
 }
 
-/// Writes one analysis into the capture directory and returns where it landed.
+/// Appends one analysis to the log and returns where it landed.
 #[tauri::command]
 pub async fn save_analysis(app: AppHandle, text: String) -> Result<String, String> {
-    let dir = capture_dir(&app)?;
+    write_analysis(&app, &text).inspect_err(|error| eprintln!("save_analysis failed: {error}"))
+}
+
+/// Adding the line ending here rather than trusting the caller keeps the
+/// one-entry-per-line shape of the log an invariant of the writer.
+fn write_analysis(app: &AppHandle, line: &str) -> Result<String, String> {
+    let dir = capture_dir(app)?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
 
-    let stamp = timestamp()?;
-    let path = dir.join(format!("{ANALYSIS_PREFIX}{stamp}.txt"));
+    let path = dir.join(ANALYSIS_FILE);
+    let mut log = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|e| e.to_string())?;
 
-    fs::write(&path, text).map_err(|e| e.to_string())?;
-    let _ = prune(&dir, ANALYSIS_PREFIX, ".txt", MAX_ANALYSES);
+    writeln!(log, "{line}").map_err(|e| e.to_string())?;
 
     Ok(path.to_string_lossy().into_owned())
 }
