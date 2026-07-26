@@ -8,6 +8,13 @@ import {
 } from "../activity";
 import { analyseDesktop, recordAnalysisFailure } from "../screenAnalysis";
 
+export type DesktopWatch = {
+  /** How long the user has spent on what, and what they are on now. */
+  activity: ActivityState;
+  /** What the most recent reading said was on screen, for the duck to talk about. */
+  note: string;
+};
+
 /**
  * Captures and classifies the desktop on a fixed interval while `enabled`,
  * returning the running record of what the user has been doing.
@@ -20,13 +27,15 @@ import { analyseDesktop, recordAnalysisFailure } from "../screenAnalysis";
 export function useDesktopAnalysis(
   intervalMs: number,
   enabled: boolean,
-): ActivityState {
+): DesktopWatch {
   const [activity, setActivity] = useState<ActivityState>(emptyActivity);
+  const [note, setNote] = useState("");
 
   // Starting or stopping the loop discards the run in progress. Whatever the
   // user did while the duck was not looking must not count for or against them.
   useEffect(() => {
     setActivity((previous) => restartRun(previous));
+    setNote("");
   }, [enabled]);
 
   useEffect(() => {
@@ -41,12 +50,13 @@ export function useDesktopAnalysis(
       if (inFlight || stopped) return;
       inFlight = true;
       try {
-        const { category } = await analyseDesktop();
+        const { category, note: reading } = await analyseDesktop();
         // An unparseable reply is dropped rather than guessed at, which leaves
         // the current run intact instead of breaking it on a garbled line.
         if (category && !stopped) {
           const at = Date.now();
           setActivity((previous) => applyObservation(previous, category, at));
+          setNote(reading);
         }
       } catch (error) {
         console.error("desktop analysis failed", error);
@@ -72,5 +82,5 @@ export function useDesktopAnalysis(
     saveTotals(activity.totals);
   }, [activity.totals]);
 
-  return activity;
+  return { activity, note };
 }

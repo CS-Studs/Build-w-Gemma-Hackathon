@@ -11,9 +11,10 @@ pub const WORKSPACE_LABEL: &str = "workspace";
 pub fn build_widget(app: &AppHandle) -> Result<WebviewWindow> {
     let widget = WebviewWindowBuilder::new(app, WIDGET_LABEL, WebviewUrl::App("index.html".into()))
         .title("StudyDuck")
-        // Taller than the duck needs: the extra headroom is where the speech
-        // bubble appears, and the study timer sits below the duck.
-        .inner_size(240.0, 280.0)
+        // Bigger than the duck needs in both directions: the headroom above is
+        // where the speech bubble appears and the study timer sits below, and
+        // the width is what stops a remark wrapping into a narrow column.
+        .inner_size(320.0, 280.0)
         .resizable(false)
         .decorations(false)
         .transparent(true)

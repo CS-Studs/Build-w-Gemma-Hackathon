@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { useWindowDrag } from "../hooks/useWindowDrag";
-import { useSpeechCycle } from "../hooks/useSpeechCycle";
 import { useDesktopAnalysis } from "../hooks/useDesktopAnalysis";
 import { useActiveStudySession } from "../hooks/useActiveStudySession";
 import { useDuckMood } from "../hooks/useDuckMood";
+import { useDuckSpeech } from "../hooks/useDuckSpeech";
 import { enterWorkspace } from "../windows";
-import { IDLE_LINES } from "../speech";
 import { Duck } from "./Duck";
 import { SpeechBubble } from "./SpeechBubble";
 import {
@@ -55,16 +54,14 @@ export function Widget() {
   const { held, handlers } = useWindowDrag(() => {
     void enterWorkspace();
   });
-  const speech = useSpeechCycle(IDLE_LINES);
   const session = useActiveStudySession();
 
   // Only watch the desktop while a session is actually counting. A paused or
   // absent timer means the user is not studying, so there is nothing to judge.
-  const activity = useDesktopAnalysis(
-    ANALYSIS_INTERVAL_MS,
-    Boolean(session?.runningSince),
-  );
+  const studying = Boolean(session?.runningSince);
+  const { activity, note } = useDesktopAnalysis(ANALYSIS_INTERVAL_MS, studying);
   const { mood, hearts } = useDuckMood(activity);
+  const speech = useDuckSpeech(activity, note, studying);
 
   useEffect(() => {
     const blockMenu = (event: MouseEvent) => event.preventDefault();

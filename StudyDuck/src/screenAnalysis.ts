@@ -1,10 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
 import { invoke } from "@tauri-apps/api/core";
-
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
-
-/** Same model DuckChat talks to. */
-const MODEL = "gemma-4-31b-it";
+import { ai, VISION_MODEL } from "./gemma";
 
 /** The three buckets a screenshot can fall into. */
 export const ACTIVITY_CATEGORIES = ["work", "entertainment", "desktop"] as const;
@@ -29,6 +24,8 @@ export const ACTIVITY_PROMPT =
 export type DesktopAnalysis = {
   /** The parsed category, or null when the model answered in an unexpected shape. */
   category: ActivityCategory | null;
+  /** The reason half of the line, e.g. "Browsing videos on YouTube." */
+  note: string;
   /** The raw single line the model replied with. */
   text: string;
   /** The log the line was appended to. */
@@ -40,8 +37,19 @@ function parseCategory(text: string): ActivityCategory | null {
   return ACTIVITY_CATEGORIES.find((category) => category === head) ?? null;
 }
 
+/**
+ * The half of the verdict that says what is actually on screen.
+ *
+ * This is what the duck ends up talking about, so a line that arrived without
+ * the expected separator falls back to the whole thing rather than to nothing.
+ */
+function parseNote(text: string): string {
+  const [, ...rest] = text.split("|");
+  return (rest.join("|").trim() || text.trim()).replace(/\s+/g, " ");
+}
+
 /** Appends one timestamped line to the analysis log. */
-function fileNote(body: string): Promise<string> {
+export function logNote(body: string): Promise<string> {
   // The log is one entry per line. The model is asked for a single line and an
   // error message is usually one, but neither is guaranteed, so anything that
   // wrapped gets folded back before it can break the shape of the file.
@@ -62,7 +70,7 @@ function fileNote(body: string): Promise<string> {
  */
 export function recordAnalysisFailure(error: unknown): Promise<string> {
   const detail = error instanceof Error ? error.message : String(error);
-  return fileNote(`FAILED: ${detail}`);
+  return logNote(`FAILED: ${detail}`);
 }
 
 /**
@@ -75,7 +83,7 @@ export async function analyseDesktop(): Promise<DesktopAnalysis> {
   const imageBase64 = await invoke<string>("capture_screen");
 
   const response = await ai.models.generateContent({
-    model: MODEL,
+    model: VISION_MODEL,
     config: { systemInstruction: ACTIVITY_SYSTEM_PROMPT },
     contents: [
       {
@@ -89,7 +97,7 @@ export async function analyseDesktop(): Promise<DesktopAnalysis> {
   });
 
   const text = (response.text ?? "").trim();
-  const path = await fileNote(text);
+  const path = await logNote(text);
 
-  return { category: parseCategory(text), text, path };
+  return { category: parseCategory(text), note: parseNote(text), text, path };
 }

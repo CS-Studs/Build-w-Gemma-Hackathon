@@ -9,8 +9,14 @@ export type DuckMoodView = {
   hearts: boolean;
 };
 
-/** How long the user may be off task before the duck sulks. */
-const ANGRY_AFTER_MS = 15_000;
+/**
+ * How long the user may be off task before the duck sulks.
+ *
+ * Zero means the very first reading that is not work turns the duck, which is
+ * as immediate as it can be: the face cannot change before the screen has been
+ * looked at, and that happens on the analysis interval.
+ */
+const ANGRY_AFTER_MS = 0;
 /** How long the duck stays pleased once work resumes. */
 const HAPPY_FOR_MS = 15_000;
 /** How long the hearts show at the start of that. */
@@ -42,9 +48,11 @@ export function useDuckMood(activity: ActivityState): DuckMoodView {
   useEffect(() => {
     const working = activity.category === "work";
     // Before the first reading nothing is known, so the duck waits rather than
-    // treating an unread screen as time wasted.
-    const offTaskFor =
-      activity.category && !working ? now - activity.since : 0;
+    // treating an unread screen as time wasted. Being off task is a separate
+    // test from having been off task long enough, so that a zero threshold
+    // still reads as false while the user is working.
+    const offTask = activity.category !== null && !working;
+    const sulking = offTask && now - activity.since >= ANGRY_AFTER_MS;
 
     if (mood === "angry") {
       if (working) {
@@ -58,7 +66,7 @@ export function useDuckMood(activity: ActivityState): DuckMoodView {
       if (happySince !== null && now - happySince >= HAPPY_FOR_MS) {
         setMood("default");
         setHappySince(null);
-      } else if (offTaskFor >= ANGRY_AFTER_MS) {
+      } else if (sulking) {
         // Wandering off again cuts the celebration short.
         setMood("angry");
         setHappySince(null);
@@ -66,7 +74,7 @@ export function useDuckMood(activity: ActivityState): DuckMoodView {
       return;
     }
 
-    if (offTaskFor >= ANGRY_AFTER_MS) setMood("angry");
+    if (sulking) setMood("angry");
   }, [now, activity, mood, happySince]);
 
   return {
