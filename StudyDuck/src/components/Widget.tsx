@@ -3,6 +3,7 @@ import { useWindowDrag } from "../hooks/useWindowDrag";
 import { useSpeechCycle } from "../hooks/useSpeechCycle";
 import { useDesktopAnalysis } from "../hooks/useDesktopAnalysis";
 import { useActiveStudySession } from "../hooks/useActiveStudySession";
+import { useDuckMood } from "../hooks/useDuckMood";
 import { enterWorkspace } from "../windows";
 import { IDLE_LINES } from "../speech";
 import { Duck } from "./Duck";
@@ -14,8 +15,8 @@ import {
 } from "./studySessionStore";
 import "./Widget.css";
 
-/** How often the duck looks at the desktop while it is floating. */
-const ANALYSIS_INTERVAL_MS = 15_000;
+/** How often the duck looks at the desktop while a session is counting. */
+const ANALYSIS_INTERVAL_MS = 5_000;
 
 function WidgetStudyTimer({ session }: { session: ActiveStudySession | null }) {
   const [now, setNow] = useState(Date.now);
@@ -59,7 +60,11 @@ export function Widget() {
 
   // Only watch the desktop while a session is actually counting. A paused or
   // absent timer means the user is not studying, so there is nothing to judge.
-  useDesktopAnalysis(ANALYSIS_INTERVAL_MS, Boolean(session?.runningSince));
+  const activity = useDesktopAnalysis(
+    ANALYSIS_INTERVAL_MS,
+    Boolean(session?.runningSince),
+  );
+  const { mood, hearts } = useDuckMood(activity);
 
   useEffect(() => {
     const blockMenu = (event: MouseEvent) => event.preventDefault();
@@ -75,7 +80,7 @@ export function Widget() {
           className={held ? "widget__duck is-held" : "widget__duck"}
           {...handlers}
         >
-          <Duck />
+          <Duck mood={mood} hearts={hearts} />
           <WidgetStudyTimer session={session} />
         </div>
       </div>
