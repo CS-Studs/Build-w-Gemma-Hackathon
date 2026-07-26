@@ -14,7 +14,7 @@ pub fn build_widget(app: &AppHandle) -> Result<WebviewWindow> {
         // Bigger than the duck needs in both directions: the headroom above is
         // where the speech bubble appears and the study timer sits below, and
         // the width is what stops a remark wrapping into a narrow column.
-        .inner_size(320.0, 280.0)
+        .inner_size(360.0, 280.0)
         .resizable(false)
         .decorations(false)
         .transparent(true)

@@ -70,17 +70,40 @@ function tidy(reply: string): string {
 }
 
 /**
+ * How long to wait for a line before giving up on it.
+ *
+ * A remark is only wanted while the mood it belongs to is still on screen, so a
+ * slow one is worth abandoning: the duck can ask again with a fresher note. The
+ * request that never comes back at all is the real reason for this, though --
+ * without a deadline it would hold the duck's only voice open indefinitely.
+ */
+const SPEECH_TIMEOUT_MS = 25_000;
+
+/**
  * Asks Gemma for one line of duck.
  *
  * Stateless, like the screen classifier: every remark carries its own situation,
  * so there is no history to keep and nothing to go stale between sessions.
  */
 export async function composeRemark(remark: Remark): Promise<string> {
-  const response = await ai.models.generateContent({
-    model: SPEECH_MODEL,
-    config: { systemInstruction: SPEECH_SYSTEM_PROMPT },
-    contents: [{ role: "user", parts: [{ text: buildPrompt(remark) }] }],
-  });
+  const abort = new AbortController();
+  const deadline = window.setTimeout(
+    () => abort.abort(new Error(`no reply within ${SPEECH_TIMEOUT_MS}ms`)),
+    SPEECH_TIMEOUT_MS,
+  );
 
-  return tidy(response.text ?? "");
+  try {
+    const response = await ai.models.generateContent({
+      model: SPEECH_MODEL,
+      config: {
+        systemInstruction: SPEECH_SYSTEM_PROMPT,
+        abortSignal: abort.signal,
+      },
+      contents: [{ role: "user", parts: [{ text: buildPrompt(remark) }] }],
+    });
+
+    return tidy(response.text ?? "");
+  } finally {
+    window.clearTimeout(deadline);
+  }
 }

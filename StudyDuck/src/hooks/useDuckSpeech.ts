@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ActivityState } from "../activity";
 import { composeRemark } from "../duckSpeech";
 import { logNote, type ActivityCategory } from "../screenAnalysis";
@@ -14,17 +14,26 @@ const BUBBLE_MS = 7_000;
 /** How often the duck speaks up again while the user carries on doing the same thing. */
 const NUDGE_EVERY_MS = 60_000;
 
+/** How often the duck considers whether it has anything to say. */
+const TICK_MS = 1_000;
+
+/** How soon an attempt that produced no line may be repeated. */
+const RETRY_AFTER_MS = 5_000;
+
 /**
  * The duck's speech bubble, written by Gemma from what the screen has shown.
  *
  * Two things make it talk: the moment the user switches between working and not
  * (the same moment the duck's face changes, so the two land together), and then
- * once a minute for as long as they stay on it. A remark takes a second or two
- * to come back, so the line follows the new face rather than arriving with it.
+ * once a minute for as long as they stay on it. A remark takes seconds to come
+ * back, so the line follows the new face rather than arriving with it.
  *
- * `note` is the current reading and changes every few seconds, so it is read
- * through a ref: putting it in the dependencies would restart the minute timer
- * -- and fire a fresh remark -- on every glance at the screen.
+ * Both are decided by one timer that is started once and never rebuilt, reading
+ * everything it needs from refs. The obvious shape -- an effect per rule, keyed
+ * on the current activity -- puts a timer and an in-flight request inside
+ * something that is torn down and recreated whenever the activity changes,
+ * which is precisely when the duck has something to say. Anything the duck must
+ * not miss therefore lives outside the render cycle entirely.
  */
 export function useDuckSpeech(
   activity: ActivityState,
@@ -37,27 +46,41 @@ export function useDuckSpeech(
   } | null>(null);
   const [visible, setVisible] = useState(false);
 
-  const latest = useRef({ activity, note });
+  const latest = useRef({ activity, note, enabled });
   useEffect(() => {
-    latest.current = { activity, note };
+    latest.current = { activity, note, enabled };
   });
 
-  // What the user was doing before the current stretch, and which stretch has
-  // already had its reaction. Both survive a remount, so React's development
-  // double-mount cannot make the duck react to the same switch twice.
+  // Which run has been noticed, what came before it, and which one has had its
+  // reaction. A run is identified by its start, which only moves when the
+  // category does.
+  const seenRun = useRef<number | null>(null);
+  const runCategory = useRef<ActivityCategory | null>(null);
   const previousCategory = useRef<ActivityCategory | null>(null);
   const reactedTo = useRef<number | null>(null);
 
-  useEffect(() => {
-    const { category, since } = activity;
-    if (!enabled || !category) return;
+  // One request at a time: a nudge that came due while a reaction was still
+  // being written would talk over it.
+  const speaking = useRef(false);
+  const lastAttempt = useRef(0);
+  const lastSpoke = useRef(0);
 
-    let stopped = false;
-
-    const speak = async (elapsedMs: number, previous: ActivityCategory | null) => {
-      // The screen may have moved on while the last line was still being
-      // written; a remark about the old stretch is no longer true.
-      if (stopped || latest.current.activity.since !== since) return;
+  /**
+   * Asks for a line and shows it, reporting whether one reached the bubble.
+   *
+   * Whether a remark is still wanted depends on the run it describes and
+   * nothing else. Tying that to the lifetime of an effect instead loses the
+   * reply whenever the component happens to re-render mid-request.
+   */
+  const speak = useCallback(
+    async (
+      since: number,
+      category: ActivityCategory,
+      elapsedMs: number,
+      previous: ActivityCategory | null,
+    ): Promise<boolean> => {
+      speaking.current = true;
+      const asked = Date.now();
 
       try {
         const text = await composeRemark({
@@ -66,35 +89,86 @@ export function useDuckSpeech(
           note: latest.current.note,
           elapsedMs,
         });
-        if (stopped || !text || latest.current.activity.since !== since) return;
-        setUtterance((current) => ({ id: (current?.id ?? 0) + 1, text }));
+
+        // The screen may have moved on while the line was being written; a
+        // remark about the old stretch is no longer true.
+        const current =
+          latest.current.enabled && latest.current.activity.since === since;
+        if (!text || !current) {
+          // A dropped line used to leave no trace at all, which made a duck
+          // that stayed quiet indistinguishable from one that was never asked.
+          await logNote(
+            `SAID NOTHING: ${current ? "the model replied with nothing" : "the run had already moved on"}`,
+          ).catch(() => {});
+          return false;
+        }
+
+        setUtterance((previousUtterance) => ({
+          id: (previousUtterance?.id ?? 0) + 1,
+          text,
+        }));
+        lastSpoke.current = Date.now();
         // Filed alongside the readings that prompted it, so the log reads back
-        // as what the duck saw and what it said about it, in order.
-        await logNote(`SAID: ${text}`).catch(() => {});
+        // as what the duck saw and what it said about it, in order. The round
+        // trip is worth recording next to it: how late a line is says which of
+        // the two models to blame when the duck feels slow.
+        const took = ((Date.now() - asked) / 1000).toFixed(1);
+        await logNote(`SAID (${took}s): ${text}`).catch(() => {});
+        return true;
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
         // Same reasoning as the classifier: the widget's devtools are out of
         // reach, so the log on disk is the only place a failure is visible.
         await logNote(`SPEECH FAILED: ${detail}`).catch(() => {});
+        return false;
+      } finally {
+        speaking.current = false;
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const tick = () => {
+      const { activity: current, enabled: watching } = latest.current;
+      const { category, since } = current;
+      if (!watching || !category || speaking.current) return;
+
+      if (seenRun.current !== since) {
+        seenRun.current = since;
+        previousCategory.current = runCategory.current;
+        runCategory.current = category;
+        // A switch is the one moment worth interrupting for, so it is not held
+        // up by the pause that paces retries after a failure.
+        lastAttempt.current = 0;
+      }
+
+      const now = Date.now();
+      if (now - lastAttempt.current < RETRY_AFTER_MS) return;
+
+      // The reaction to the switch comes first, and keeps being retried until
+      // something reaches the bubble: a run that changed the duck's face
+      // without a word to go with it is the one outcome worth avoiding.
+      if (reactedTo.current !== since) {
+        reactedTo.current = since;
+        lastAttempt.current = now;
+        void speak(since, category, 0, previousCategory.current).then(
+          (spoke) => {
+            if (!spoke && reactedTo.current === since) reactedTo.current = null;
+          },
+        );
+        return;
+      }
+
+      if (now - lastSpoke.current >= NUDGE_EVERY_MS) {
+        lastAttempt.current = now;
+        void speak(since, category, now - since, null);
       }
     };
 
-    if (reactedTo.current !== since) {
-      reactedTo.current = since;
-      const previous = previousCategory.current;
-      previousCategory.current = category;
-      void speak(0, previous);
-    }
-
-    const timer = window.setInterval(() => {
-      void speak(Date.now() - since, null);
-    }, NUDGE_EVERY_MS);
-
-    return () => {
-      stopped = true;
-      window.clearInterval(timer);
-    };
-  }, [enabled, activity.category, activity.since]);
+    const timer = window.setInterval(tick, TICK_MS);
+    return () => window.clearInterval(timer);
+  }, [speak]);
 
   useEffect(() => {
     if (!utterance) return;

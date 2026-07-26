@@ -1,12 +1,17 @@
 .speech-bubble {
   position: absolute;
   bottom: 100%;
-  /* Offset to the right of the duck, which its containing block is exactly as
-     wide as (150px). max-width keeps a long line inside the 320px widget
-     window set in src-tauri/src/windows.rs -- 62 + 200 leaves the bubble a
-     margin off the right edge even at its widest. */
-  left: 62px;
-  max-width: 200px;
+  /* Offset to the right of the duck, whose box this is positioned inside and
+     which is exactly 150px wide.
+
+     That box is centred in the window, so the room to the right of the bubble's
+     own left edge is half the window, plus the 75px from the duck's centre to
+     its right edge, less this offset. Stating max-width as that sum keeps the
+     bubble inside the window at any width -- a bare pixel value has to be
+     re-derived by hand every time the widget window is resized, and silently
+     clips when it is not. The last 10px is the margin off the right edge. */
+  left: 48px;
+  max-width: calc(50vw + 75px - 48px - 10px);
   width: max-content;
   margin-bottom: 6px;
   padding: 8px 12px;
