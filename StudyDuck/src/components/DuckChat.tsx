@@ -9,9 +9,27 @@ import {
   buildDuckChatSystemInstruction,
   loadUserProfile,
 } from './userProfileStore';
+import {
+  type TodoCreationProposal,
+  applyTodoProposal,
+  getTodoStructure,
+  validateTodoProposal,
+} from './todoBoardStore';
 
 // Initialize the SDK using the Vite environment variable
 const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+const TODO_TOOLS = [{
+  functionDeclarations: [
+    { name: 'get_todo_structure', description: 'Read the current project and list names and IDs before targeting an existing destination.', parametersJsonSchema: { type: 'object', properties: {}, additionalProperties: false } },
+    { name: 'propose_todo_creations', description: 'Propose an atomic set of projects, lists, and tasks for user confirmation. Tasks always require a list destination.', parametersJsonSchema: {
+      type: 'object', additionalProperties: false, required: ['projects', 'lists', 'tasks'], properties: {
+        projects: { type: 'array', items: { type: 'object', required: ['ref', 'title'], properties: { ref: { type: 'string' }, title: { type: 'string' } } } },
+        lists: { type: 'array', items: { type: 'object', required: ['ref', 'title', 'destination'], properties: { ref: { type: 'string' }, title: { type: 'string' }, destination: { type: 'string', enum: ['ungrouped', 'existing_project', 'new_project'] }, projectId: { type: 'string' }, projectRef: { type: 'string' } } } },
+        tasks: { type: 'array', items: { type: 'object', required: ['text', 'destination'], properties: { text: { type: 'string' }, destination: { type: 'string', enum: ['existing_list', 'new_list'] }, listId: { type: 'string' }, listRef: { type: 'string' } } } },
+      },
+    } },
+  ],
+}];
 
 // 1. We define what a "Message" looks like
 interface Message {
@@ -33,12 +51,16 @@ export function DuckChat() {
 
   // Track when Gemma is generating a response
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingTodo, setPendingTodo] = useState<{ call: any; proposal: TodoCreationProposal } | null>(null);
 
   // References
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatRef = useRef<any>(null);
+  const proposalRef = useRef<HTMLElement>(null);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
   const pendingProfileRef = useRef<UserProfile | null>(null);
+  const resolvingTodoRef = useRef(false);
 
   // Safety check so React Strict Mode doesn't send two greetings
   const hasInitialized = useRef(false);
@@ -50,6 +72,7 @@ export function DuckChat() {
       config: {
         temperature: 0.5,
         systemInstruction: buildDuckChatSystemInstruction(profile),
+        tools: TODO_TOOLS,
       },
       history,
     });
@@ -65,6 +88,51 @@ export function DuckChat() {
       console.error('Error applying DuckChat personalization:', error);
     }
   };
+
+  const appendBotMessage = (text: string) => {
+    if (!text) return;
+    setMessages((previous) => [...previous, { id: Date.now() + Math.random(), text, sender: 'bot' }]);
+  };
+
+  const processModelResponse = async (response: any, depth = 0): Promise<void> => {
+    if (depth >= 4) { appendBotMessage("I couldn't complete that board request safely. Please try rephrasing it."); return; }
+    const calls = response.functionCalls ?? [];
+    if (!calls.length) { appendBotMessage(response.text ?? 'Done.'); return; }
+    const call = calls[0];
+    if (call.name === 'get_todo_structure') {
+      const next = await chatRef.current.sendMessage({ message: [{ functionResponse: { id: call.id, name: call.name, response: { output: getTodoStructure() } } }] });
+      await processModelResponse(next, depth + 1);
+      return;
+    }
+    if (call.name === 'propose_todo_creations') {
+      const checked = validateTodoProposal(call.args);
+      if (checked.ok) { setPendingTodo({ call, proposal: checked.proposal }); return; }
+      const next = await chatRef.current.sendMessage({ message: [{ functionResponse: { id: call.id, name: call.name, response: { error: checked.error } } }] });
+      await processModelResponse(next, depth + 1);
+      return;
+    }
+    const next = await chatRef.current.sendMessage({ message: [{ functionResponse: { id: call.id, name: call.name, response: { error: 'Unknown tool.' } } }] });
+    await processModelResponse(next, depth + 1);
+  };
+
+  useEffect(() => {
+    if (!pendingTodo) return;
+    const frame = window.requestAnimationFrame(() => {
+      proposalRef.current?.scrollIntoView({
+        block: 'end',
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [pendingTodo]);
+
+  useEffect(() => {
+    if (pendingTodo) return;
+    const frame = window.requestAnimationFrame(() => {
+      chatBottomRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [messages, isLoading, pendingTodo]);
 
   // Initialize Gemma, keep the one-time welcome, and respond to profile updates.
   useEffect(() => {
@@ -178,14 +246,7 @@ export function DuckChat() {
         message: textToSend,
       });
 
-      // 3. Add bot response to UI
-      const botMessage: Message = {
-        id: Date.now() + 1,
-        text: response.text,
-        sender: 'bot',
-      };
-
-      setMessages((prev) => [...prev, botMessage]);
+      await processModelResponse(response);
     } catch (error) {
       console.error('Error connecting to Gemma:', error);
       setMessages((prev) => [
@@ -197,6 +258,28 @@ export function DuckChat() {
         },
       ]);
     } finally {
+      loadingRef.current = false;
+      setIsLoading(false);
+      applyPendingProfile();
+    }
+  };
+
+  const resolveTodoProposal = async (confirmed: boolean) => {
+    if (!pendingTodo || resolvingTodoRef.current) return;
+    resolvingTodoRef.current = true;
+    const pending = pendingTodo;
+    setPendingTodo(null);
+    setIsLoading(true);
+    loadingRef.current = true;
+    try {
+      const result = confirmed ? applyTodoProposal(pending.proposal) : { ok: false as const, error: 'The user cancelled the proposal.' };
+      const response = await chatRef.current.sendMessage({ message: [{ functionResponse: { id: pending.call.id, name: pending.call.name, response: result.ok ? { output: result.created } : { error: result.error, cancelled: !confirmed } } }] });
+      await processModelResponse(response);
+    } catch (error) {
+      console.error('Error resolving to-do proposal:', error);
+      appendBotMessage("I couldn't update the board. Nothing was intentionally changed; please try again.");
+    } finally {
+      resolvingTodoRef.current = false;
       loadingRef.current = false;
       setIsLoading(false);
       applyPendingProfile();
@@ -241,6 +324,18 @@ export function DuckChat() {
             </p>
           </div>
         )}
+        {pendingTodo && (
+          <article ref={proposalRef} className="duckchat-proposal" aria-label="Proposed to-do changes">
+            <div className="duckchat-proposal__header"><strong>Review board changes</strong><span>{pendingTodo.proposal.projects.length + pendingTodo.proposal.lists.length + pendingTodo.proposal.tasks.length} items</span></div>
+            <div className="duckchat-proposal__body">
+              {!!pendingTodo.proposal.projects.length && <p><b>Projects</b>{pendingTodo.proposal.projects.map((item) => item.title).join(', ')}</p>}
+              {!!pendingTodo.proposal.lists.length && <p><b>Lists</b>{pendingTodo.proposal.lists.map((item) => item.title).join(', ')}</p>}
+              {!!pendingTodo.proposal.tasks.length && <p><b>Tasks</b>{pendingTodo.proposal.tasks.map((item) => item.text).join(', ')}</p>}
+            </div>
+            <div className="duckchat-proposal__actions"><button type="button" className="duckchat-proposal__cancel" onClick={() => void resolveTodoProposal(false)}>Cancel</button><button type="button" className="duckchat-proposal__confirm" onClick={() => void resolveTodoProposal(true)}>Create</button></div>
+          </article>
+        )}
+        <div ref={chatBottomRef} className="duckchat-scroll-anchor" aria-hidden="true" />
       </div>
 
       {/* Input Area */}
@@ -269,7 +364,7 @@ export function DuckChat() {
             className="attach-btn"
             onClick={() => fileInputRef.current?.click()}
             title="Attach an image"
-            disabled={isLoading}
+            disabled={isLoading || !!pendingTodo}
           >
             📎
           </button>
@@ -281,15 +376,15 @@ export function DuckChat() {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) =>
-              e.key === 'Enter' && !isLoading && handleSendMessage()
+              e.key === 'Enter' && !isLoading && !pendingTodo && handleSendMessage()
             }
-            disabled={isLoading}
+            disabled={isLoading || !!pendingTodo}
           />
 
           <button
             className="send-btn"
             onClick={handleSendMessage}
-            disabled={isLoading || (!inputText.trim() && !selectedImage)}
+            disabled={isLoading || !!pendingTodo || (!inputText.trim() && !selectedImage)}
           >
             Send
           </button>

@@ -96,6 +96,52 @@
   margin-bottom: 8px;
 }
 
+.duckchat-proposal {
+  display: flex;
+  flex: 0 0 auto;
+  max-height: min(360px, 58vh);
+  flex-direction: column;
+  align-self: stretch;
+  overflow: hidden;
+  color: var(--chat-text);
+  background: rgba(91, 103, 214, 0.12);
+  border: 1px solid rgba(139, 148, 228, 0.48);
+  border-radius: 12px;
+}
+
+.duckchat-proposal__header,
+.duckchat-proposal__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.duckchat-proposal__header { border-bottom: 1px solid rgba(139, 148, 228, 0.25); }
+.duckchat-proposal__header strong { font-size: 0.8rem; }
+.duckchat-proposal__header span { font-size: 0.68rem; opacity: 0.7; }
+.duckchat-proposal__body { display: grid; gap: 7px; min-height: 0; padding: 10px 12px; overflow-y: auto; scrollbar-color: rgba(139, 148, 228, 0.55) transparent; scrollbar-width: thin; }
+.duckchat-proposal__body p { margin: 0; overflow-wrap: anywhere; font-size: 0.72rem; line-height: 1.4; }
+.duckchat-proposal__body b { display: block; margin-bottom: 2px; color: #b5baff; font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.duckchat-proposal__actions { justify-content: flex-end; padding-top: 0; }
+.duckchat-proposal__actions button { padding: 7px 11px; font: inherit; font-size: 0.7rem; font-weight: 700; border: 0; border-radius: 7px; cursor: pointer; }
+.duckchat-proposal__cancel { color: var(--chat-text); background: rgba(120, 120, 130, 0.25); }
+.duckchat-proposal__confirm { color: #fff; background: #5b67d6; }
+.duckchat-proposal__confirm:hover { background: #4d59c5; }
+.duckchat-proposal__actions button:focus-visible { outline: 3px solid rgba(139, 148, 228, 0.48); outline-offset: 2px; }
+
+.duckchat-scroll-anchor {
+  flex: 0 0 1px;
+  width: 100%;
+  height: 1px;
+}
+
+@media (max-height: 620px) {
+  .duckchat-proposal { max-height: 48vh; }
+}
+
 /* 6. Input Area */
 .duckchat-input-area {
   padding: 16px;

@@ -7,17 +7,17 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  type TodoBoardV2,
+  type TodoList,
+  type TodoProject,
+  TODO_BOARD_CHANGED_EVENT,
+  TODO_BOARD_STORAGE_KEY,
+  loadTodoBoard,
+  saveTodoBoard,
+} from "./todoBoardStore";
 import "./ToDoList.css";
 
-type TodoItem = { id: string; text: string; completed: boolean };
-type TodoList = { id: string; title: string; items: TodoItem[]; collapsed?: boolean };
-type TodoProject = { id: string; title: string; collapsed: boolean; lists: TodoList[] };
-type TodoBoardV2 = {
-  version: 2;
-  ungroupedCollapsed: boolean;
-  ungroupedLists: TodoList[];
-  projects: TodoProject[];
-};
 type ContainerId = "ungrouped" | string;
 type DragState =
   | { type: "project"; projectId: string }
@@ -25,57 +25,9 @@ type DragState =
   | { type: "item"; listId: string; itemId: string };
 type PointerDragState = DragState & { label: string; width: number };
 
-const STORAGE_KEY = "studyduck.todo-board.v2";
-const LEGACY_STORAGE_KEY = "studyduck.todo-lists.v1";
 const EXPAND_DELAY = 550;
 
 const makeId = () => crypto.randomUUID();
-
-function isItem(value: unknown): value is TodoItem {
-  const item = value as TodoItem;
-  return !!item && typeof item.id === "string" && typeof item.text === "string" && typeof item.completed === "boolean";
-}
-
-function isList(value: unknown): value is TodoList {
-  const list = value as TodoList;
-  return !!list && typeof list.id === "string" && typeof list.title === "string" &&
-    (list.collapsed === undefined || typeof list.collapsed === "boolean") &&
-    Array.isArray(list.items) && list.items.every(isItem);
-}
-
-function isBoard(value: unknown): value is TodoBoardV2 {
-  const board = value as TodoBoardV2;
-  return !!board && board.version === 2 && typeof board.ungroupedCollapsed === "boolean" &&
-    Array.isArray(board.ungroupedLists) && board.ungroupedLists.every(isList) &&
-    Array.isArray(board.projects) && board.projects.every((project: unknown) => {
-      const candidate = project as TodoProject;
-      return !!candidate && typeof candidate.id === "string" && typeof candidate.title === "string" &&
-        typeof candidate.collapsed === "boolean" && Array.isArray(candidate.lists) && candidate.lists.every(isList);
-    });
-}
-
-function loadBoard(): TodoBoardV2 {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed: unknown = JSON.parse(stored);
-      if (isBoard(parsed)) return parsed;
-    }
-    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (legacy) {
-      const parsed: unknown = JSON.parse(legacy);
-      if (Array.isArray(parsed) && parsed.every(isList)) {
-        return { version: 2, ungroupedCollapsed: false, ungroupedLists: parsed, projects: [] };
-      }
-    }
-  } catch { /* Storage is optional. */ }
-  return {
-    version: 2,
-    ungroupedCollapsed: false,
-    ungroupedLists: [{ id: makeId(), title: "My tasks", items: [], collapsed: false }],
-    projects: [],
-  };
-}
 
 function allLists(board: TodoBoardV2) {
   return [...board.ungroupedLists, ...board.projects.flatMap((project) => project.lists)];
@@ -110,7 +62,7 @@ function TrashIcon() { return <svg viewBox="0 0 16 16" aria-hidden="true"><path 
 
 /** A locally persisted hierarchy of draggable projects, lists, and tasks. */
 export function ToDoList() {
-  const [board, setBoard] = useState<TodoBoardV2>(loadBoard);
+  const [board, setBoard] = useState<TodoBoardV2>(loadTodoBoard);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [newEntity, setNewEntity] = useState<{ type: "list" | "project"; containerId?: ContainerId } | null>(null);
   const [newTitle, setNewTitle] = useState("");
@@ -130,8 +82,18 @@ export function ToDoList() {
   const lists = useMemo(() => allLists(board), [board]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(board)); } catch { /* Keep session state. */ }
+    saveTodoBoard(board, "todo-ui");
   }, [board]);
+  useEffect(() => {
+    const changed = (event: Event) => {
+      const detail = (event as CustomEvent<{ board: TodoBoardV2; source: string }>).detail;
+      if (detail.source === "duckchat") setBoard(detail.board);
+    };
+    const storage = (event: StorageEvent) => { if (event.key === TODO_BOARD_STORAGE_KEY) setBoard(loadTodoBoard()); };
+    window.addEventListener(TODO_BOARD_CHANGED_EVENT, changed);
+    window.addEventListener("storage", storage);
+    return () => { window.removeEventListener(TODO_BOARD_CHANGED_EVENT, changed); window.removeEventListener("storage", storage); };
+  }, []);
   useEffect(() => { if (newEntity) entityInput.current?.focus(); }, [newEntity]);
   useEffect(() => { if (addingToList) itemInput.current?.focus(); }, [addingToList]);
   useEffect(() => {

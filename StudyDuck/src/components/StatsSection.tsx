@@ -13,6 +13,7 @@ import {
   formatTotalStudyTime,
   loadTaskSummary,
 } from "./statsMetrics";
+import { TODO_BOARD_CHANGED_EVENT } from "./todoBoardStore";
 import "./StatsSection.css";
 
 function CloseIcon() {
@@ -56,11 +57,14 @@ export function StatsSection() {
         setTasks(loadTaskSummary());
       }
     };
+    const handleBoardChange = () => setTasks(loadTaskSummary());
     window.addEventListener(STUDY_SESSIONS_CHANGED_EVENT, handleSessionChange);
     window.addEventListener("storage", handleStorage);
+    window.addEventListener(TODO_BOARD_CHANGED_EVENT, handleBoardChange);
     return () => {
       window.removeEventListener(STUDY_SESSIONS_CHANGED_EVENT, handleSessionChange);
       window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(TODO_BOARD_CHANGED_EVENT, handleBoardChange);
     };
   }, []);
 
