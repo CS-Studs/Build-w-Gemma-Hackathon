@@ -13,17 +13,25 @@
   -webkit-user-select: none;
 }
 
+/* Pinned to the top rather than centred, which keeps the duck itself still:
+   the speech bubble rises into the padding above it, and the study timer grows
+   downwards into empty space instead of shoving the duck when a session
+   starts or stops. */
 .widget {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   height: 100%;
+  padding-top: 64px;
 }
 
 /* Idle float. Kept on its own element so it does not fight the scale
-   transform the drag states write to .widget__duck. */
+   transform the drag states write to .widget__duck. Also the positioning
+   anchor for the bubble, which therefore bobs along with the duck but is not
+   scaled by the pick-up animation. */
 .widget__float {
+  position: relative;
   animation: widget-bob 3.2s ease-in-out infinite;
 }
 
@@ -102,34 +110,6 @@
   font-weight: 750;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-}
-
-.widget__quit {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  font-size: 15px;
-  line-height: 1;
-  color: #fff;
-  background: rgba(24, 24, 27, 0.72);
-  border: none;
-  border-radius: 50%;
-  opacity: 0;
-  cursor: pointer;
-  transition: opacity 160ms ease-out;
-}
-
-.widget:hover .widget__quit {
-  opacity: 1;
-}
-
-.widget__quit:hover {
-  background: rgba(220, 38, 38, 0.92);
 }
 
 @media (prefers-reduced-motion: reduce) {

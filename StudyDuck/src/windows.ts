@@ -12,14 +12,25 @@ export const isWidgetWindow = getCurrentWindow().label === WIDGET_LABEL;
 /**
  * Opens one window and closes the current one.
  *
- * The new window is built first and only then is this one closed: Tauri exits
- * the app once the last window goes away, so closing first would kill the
- * process before there was anything to replace it with. The Rust command
- * returns only when the window genuinely exists, which is what makes that safe.
+ * Hiding comes first so this window vanishes the instant it is clicked, rather
+ * than sitting on top of its replacement for however long the new window takes
+ * to build. Hiding does not destroy the window, so the app stays alive through
+ * the swap -- Tauri exits once the last window is *closed*, and closing before
+ * the replacement existed would kill the process outright.
  */
 async function swapTo(command: "open_widget" | "open_workspace"): Promise<void> {
-  await invoke(command);
-  await getCurrentWindow().close();
+  const current = getCurrentWindow();
+  await current.hide();
+
+  try {
+    await invoke(command);
+  } catch (error) {
+    // Nothing replaced us, so come back rather than linger as an invisible window.
+    await current.show();
+    throw error;
+  }
+
+  await current.close();
 }
 
 /** Widget -> workspace. */

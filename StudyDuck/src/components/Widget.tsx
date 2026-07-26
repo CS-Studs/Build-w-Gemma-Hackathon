@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useWindowDrag } from "../hooks/useWindowDrag";
+import { useSpeechCycle } from "../hooks/useSpeechCycle";
+import { useScreenshotLoop } from "../hooks/useScreenshotLoop";
 import { enterWorkspace } from "../windows";
+import { IDLE_LINES } from "../speech";
 import { Duck } from "./Duck";
+import { SpeechBubble } from "./SpeechBubble";
 import {
   type ActiveStudySession,
   STUDY_SESSION_STORAGE_KEY,
@@ -11,6 +14,9 @@ import {
   loadStudySessions,
 } from "./studySessionStore";
 import "./Widget.css";
+
+/** How often the duck grabs the desktop while it is floating. */
+const SCREENSHOT_INTERVAL_MS = 15_000;
 
 function WidgetStudyTimer() {
   const [active, setActive] = useState<ActiveStudySession | null>(
@@ -59,6 +65,9 @@ export function Widget() {
   const { held, handlers } = useWindowDrag(() => {
     void enterWorkspace();
   });
+  const speech = useSpeechCycle(IDLE_LINES);
+
+  useScreenshotLoop(SCREENSHOT_INTERVAL_MS);
 
   useEffect(() => {
     const blockMenu = (event: MouseEvent) => event.preventDefault();
@@ -68,16 +77,8 @@ export function Widget() {
 
   return (
     <div className="widget">
-      <button
-        className="widget__quit"
-        title="Close StudyDuck"
-        aria-label="Close StudyDuck"
-        onClick={() => void getCurrentWindow().close()}
-      >
-        ×
-      </button>
-
       <div className={held ? "widget__float is-held" : "widget__float"}>
+        <SpeechBubble text={speech.text} visible={speech.visible} />
         <div
           className={held ? "widget__duck is-held" : "widget__duck"}
           {...handlers}
